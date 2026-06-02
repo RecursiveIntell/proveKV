@@ -1,0 +1,18 @@
+{
+  "manifest": {
+    "pool_id": "03dc26236fff71a388366761496e2e919ec77ac9a04f63726ab0d70801443a41",
+    "num_shared_tokens": 1280,
+    "num_layers": 24,
+    "num_kv_heads": 32,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 45219840,
+    "total_compressed_bytes": 45219840,
+    "backend": "cpu",
+    "fib_build_ms": 3460,
+    "build_seed": 42,
+    "built_at_unix": 1780428390
+  },
+  "note": "Extracted from roundtrip.bin. The full roundtrip.bin is gitignored; regenerate via REPRODUCE.md."
+}

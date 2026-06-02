@@ -1,0 +1,34 @@
+[package]
+name = "prove-kv"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.75"
+description = "proveKV — two-tier, receipted, content-addressed KV-cache pool. fib_k4_n32 cold tier + turbo_8bit hot tier. The pool is the system; the codecs are the primitives."
+license = "MIT"
+repository = "https://github.com/RecursiveIntell/proveKV"
+
+[lib]
+name = "prove_kv"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+blake3 = "1"
+rand = "0.8"
+rand_chacha = "0.3"
+thiserror = "2"
+
+fib-quant = { version = "0.1.0-alpha.1", path = "../fib-quant", optional = true }
+rayon = "1.10"
+
+[features]
+# This build of proveKV is fib-only (the "lossless at 11x" bench uses
+# the FibQuant codec exclusively). The two-tier fib+cold / turbo+hot
+# design is preserved in source but not compiled here.
+default = ["fib", "parallel_pool"]
+fib = ["fib-quant"]
+parallel_pool = ["fib-quant?/parallel"]
+
+[dev-dependencies]
+proptest = "1"

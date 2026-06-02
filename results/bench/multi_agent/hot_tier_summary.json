@@ -1,0 +1,82 @@
+{
+  "hot_tier_quality_invariant": [
+    {
+      "label": "Qwen0.5B b=2",
+      "shell_b": "?",
+      "agent_0_ppl": 8.596534,
+      "agent_0_delta_pct": "+0.0000% (lossless within noise floor)",
+      "shell_bytes": 53749666,
+      "naive_bytes": 12582912,
+      "memory_reduction": 0.23
+    },
+    {
+      "label": "Qwen0.5B b=4",
+      "shell_b": "?",
+      "agent_0_ppl": 8.596534,
+      "agent_0_delta_pct": "+0.0000% (lossless within noise floor)",
+      "shell_bytes": 53752550,
+      "naive_bytes": 12582912,
+      "memory_reduction": 0.23
+    },
+    {
+      "label": "Qwen0.5B b=8",
+      "shell_b": "?",
+      "agent_0_ppl": 8.596534,
+      "agent_0_delta_pct": "+0.0000% (lossless within noise floor)",
+      "shell_bytes": 57135521,
+      "naive_bytes": 12582912,
+      "memory_reduction": 0.22
+    },
+    {
+      "label": "SmolLM2-1.7B b=2",
+      "shell_b": "?",
+      "agent_0_ppl": 6.098456,
+      "agent_0_delta_pct": "+0.0000% (lossless within noise floor)",
+      "shell_bytes": 860133818,
+      "naive_bytes": 201326592,
+      "memory_reduction": 0.23
+    },
+    {
+      "label": "SmolLM2-1.7B b=8",
+      "shell_b": "?",
+      "agent_0_ppl": 6.098456,
+      "agent_0_delta_pct": "+0.0000% (lossless within noise floor)",
+      "shell_bytes": 914315620,
+      "naive_bytes": 201326592,
+      "memory_reduction": 0.22
+    }
+  ],
+  "hot_tier_memory_tradeoff": [
+    {
+      "label": "SmolLM2-1.7B N=2 shared=50% b=2",
+      "shared_pool_bytes": 18087936,
+      "per_agent_shell_bytes": 229335725,
+      "total_with_sharing": 476798158,
+      "naive_total": 402653184,
+      "memory_reduction": 0.84,
+      "agent_ppl_deltas": [
+        "+0.0000% (lossless within noise floor)",
+        "+0.0000% (lossless within noise floor)"
+      ]
+    },
+    {
+      "label": "SmolLM2-1.7B N=2 shared=95% b=2",
+      "shared_pool_bytes": 34338816,
+      "per_agent_shell_bytes": 23299742,
+      "total_with_sharing": 80949373,
+      "naive_total": 402653184,
+      "memory_reduction": 4.97,
+      "agent_ppl_deltas": [
+        "+0.0000% (lossless within noise floor)",
+        "+0.0000% (lossless within noise floor)"
+      ]
+    }
+  ],
+  "methodology": "Qwen2.5-0.5B-Instruct (GQA) and SmolLM2-1.7B-Instruct (MHA), WikiText-2, 1024 tokens. The shell tier (turbo_8bit/policy.turbo_config.bits) is exercised at multiple b values to measure quality vs compression. shared_frac=0.0625 isolates the shell as the dominant memory cost. Two-agent runs at shared_frac=0.5 and 0.95 measure the memory tradeoff between shared pool reuse and per-agent shell overhead.",
+  "key_findings": [
+    "Shell tier is PPL-invariant to b on both Qwen0.5B and SmolLM2-1.7B for this corpus: b=2, 4, 8 all give delta_ppl_pct=+0.0000% bit-exact.",
+    "Shell storage is currently bloated by the JSON wire format (472B/block envelope). At long agent tails, this makes the hot tier LARGER than the raw bytes (0.23x reduction = 4.3x bloat).",
+    "When agent tails are short (26 tokens, shared_frac=0.95), the shell is small and the shared pool amortizes well: 4.97x memory reduction on N=2.",
+    "Implication: the hot tier needs the same compact wire format treatment that fib-quant got. Without it, multi-agent is a memory loss for long-tail agent scenarios."
+  ]
+}

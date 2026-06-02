@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0.0",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_slug": "qwen2.5-0.5b",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_agents": 2,
+  "shared_frac": 0.8,
+  "shared_pool": {
+    "pool_id": "49134568568cae37b39a52e4074654ec5fb3d909e74d1cf8e6fe38446583bc8b",
+    "num_shared_tokens": 819,
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 1808352,
+    "build_seed": 42,
+    "built_at_unix": 1780433466,
+    "build_ms": 274
+  },
+  "agents": [
+    {
+      "agent_id": "agent_0",
+      "tail_len": 102,
+      "roundtrip_ppl": 10.530152320861816,
+      "forward_ms": 321.474552154541,
+      "oracle_ppl": 10.530152320861816,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_1",
+      "tail_len": 103,
+      "roundtrip_ppl": 11.16109561920166,
+      "forward_ms": 105.35883903503418,
+      "oracle_ppl": 11.16109561920166,
+      "delta_ppl_pct": 0.0
+    }
+  ],
+  "memory_accounting": {
+    "shared_pool_bytes": 1808352,
+    "shells_bytes": [
+      6071206,
+      6129678
+    ],
+    "total_with_sharing_bytes": 14009236,
+    "raw_bytes_per_agent": 12582912,
+    "naive_total_bytes": 25165824,
+    "memory_reduction_factor": 1.7963737637084563
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64
+  },
+  "completed_at": "2026-06-02T15:55:10.304243"
+}

@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0.0",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_slug": "qwen2.5-0.5b",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_agents": 4,
+  "shared_frac": 0.8,
+  "shared_pool": {
+    "pool_id": "49134568568cae37b39a52e4074654ec5fb3d909e74d1cf8e6fe38446583bc8b",
+    "num_shared_tokens": 819,
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 1808352,
+    "build_seed": 42,
+    "built_at_unix": 1780433790,
+    "build_ms": 283
+  },
+  "agents": [
+    {
+      "agent_id": "agent_0",
+      "tail_len": 51,
+      "roundtrip_ppl": 6.245139122009277,
+      "forward_ms": 321.9633102416992,
+      "oracle_ppl": 6.245139122009277,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_1",
+      "tail_len": 51,
+      "roundtrip_ppl": 6.245139122009277,
+      "forward_ms": 109.34162139892578,
+      "oracle_ppl": 6.245139122009277,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_2",
+      "tail_len": 51,
+      "roundtrip_ppl": 6.245139122009277,
+      "forward_ms": 110.37635803222656,
+      "oracle_ppl": 6.245139122009277,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_3",
+      "tail_len": 52,
+      "roundtrip_ppl": 6.035719871520996,
+      "forward_ms": 112.01667785644531,
+      "oracle_ppl": 6.035719871520996,
+      "delta_ppl_pct": 0.0
+    }
+  ],
+  "memory_accounting": {
+    "shared_pool_bytes": 1808352,
+    "shells_bytes": [
+      3035939,
+      3035267,
+      3035787,
+      3093891
+    ],
+    "total_with_sharing_bytes": 14009236,
+    "raw_bytes_per_agent": 12582912,
+    "naive_total_bytes": 50331648,
+    "memory_reduction_factor": 3.5927475274169125
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64
+  },
+  "completed_at": "2026-06-02T15:57:03.886077"
+}

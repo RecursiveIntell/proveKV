@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Rust stable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Publish preflight
+        run: python3 scripts/publish_preflight.py
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Test
+        run: cargo test --all-features
+
+      - name: Examples
+        run: cargo test --examples --all-features
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Docs
+        run: cargo doc --no-deps --all-features
+
+      - name: Package list
+        run: cargo package --list
+
+      - name: Publish dry run
+        run: cargo publish --dry-run
+
+      - name: Final release assertion
+        run: python3 scripts/publish_final_assert.py

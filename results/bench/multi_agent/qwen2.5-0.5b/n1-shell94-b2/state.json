@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_slug": "qwen2.5-0.5b",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_agents": 1,
+  "shared_frac": 0.0625,
+  "shared_pool": {
+    "pool_id": "87e0e942a83e9c0b209f1a94afc8dc6ffe21980f5c3e00d300f720748fd0b98e",
+    "num_shared_tokens": 64,
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 141312,
+    "build_seed": 42,
+    "built_at_unix": 1780436360,
+    "build_ms": 163
+  },
+  "agents": [
+    {
+      "agent_id": "agent_0",
+      "tail_len": 960,
+      "roundtrip_ppl": 8.59653377532959,
+      "forward_ms": 349.3196964263916,
+      "oracle_ppl": 8.59653377532959,
+      "delta_ppl_pct": 0.0
+    }
+  ],
+  "memory_accounting": {
+    "shared_pool_bytes": 141312,
+    "shells_bytes": [
+      53749666
+    ],
+    "total_with_sharing_bytes": 53890978,
+    "raw_bytes_per_agent": 12582912,
+    "naive_total_bytes": 12582912,
+    "memory_reduction_factor": 0.23348828443974426
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64
+  },
+  "completed_at": "2026-06-02T16:40:26.291154"
+}

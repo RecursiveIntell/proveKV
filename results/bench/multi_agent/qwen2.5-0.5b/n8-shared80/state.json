@@ -1,0 +1,111 @@
+{
+  "schema_version": "1.0.0",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_slug": "qwen2.5-0.5b",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_agents": 8,
+  "shared_frac": 0.8,
+  "shared_pool": {
+    "pool_id": "49134568568cae37b39a52e4074654ec5fb3d909e74d1cf8e6fe38446583bc8b",
+    "num_shared_tokens": 819,
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 1808352,
+    "build_seed": 42,
+    "built_at_unix": 1780433904,
+    "build_ms": 584
+  },
+  "agents": [
+    {
+      "agent_id": "agent_0",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 334.2459201812744,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_1",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 105.92150688171387,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_2",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 114.65024948120117,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_3",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 114.83907699584961,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_4",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 113.85560035705566,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_5",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 112.93339729309082,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_6",
+      "tail_len": 25,
+      "roundtrip_ppl": 3.7950851917266846,
+      "forward_ms": 111.59491539001465,
+      "oracle_ppl": 3.7950851917266846,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_7",
+      "tail_len": 30,
+      "roundtrip_ppl": 5.589605331420898,
+      "forward_ms": 111.43755912780762,
+      "oracle_ppl": 5.589605331420898,
+      "delta_ppl_pct": 0.0
+    }
+  ],
+  "memory_accounting": {
+    "shared_pool_bytes": 1808352,
+    "shells_bytes": [
+      1487943,
+      1488532,
+      1487497,
+      1488268,
+      1488196,
+      1487974,
+      1487864,
+      1784610
+    ],
+    "total_with_sharing_bytes": 14009236,
+    "raw_bytes_per_agent": 12582912,
+    "naive_total_bytes": 100663296,
+    "memory_reduction_factor": 7.185495054833825
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64
+  },
+  "completed_at": "2026-06-02T15:59:04.445853"
+}

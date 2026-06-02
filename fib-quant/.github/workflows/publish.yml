@@ -1,0 +1,50 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version in Cargo.toml to publish
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  crates-io:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    environment: crates-io
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Verify requested version
+        run: |
+          test "$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')" = "${{ inputs.version }}"
+
+      - name: Release gate
+        run: |
+          python3 scripts/publish_preflight.py
+          cargo fmt --all --check
+          cargo test --all-features
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test --examples --all-features
+          cargo doc --no-deps --all-features
+          cargo package --list
+          cargo publish --dry-run
+          python3 scripts/publish_final_assert.py
+
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish

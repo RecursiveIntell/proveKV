@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0.0",
+  "model": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+  "model_slug": "smollm2-1.7b",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_agents": 1,
+  "shared_frac": 0.0625,
+  "shared_pool": {
+    "pool_id": "2dec3892358c6a98e49489963a05ab001c6013402084b869ca61b8bfff583623",
+    "num_shared_tokens": 64,
+    "num_layers": 24,
+    "num_kv_heads": 32,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 2260992,
+    "build_seed": 42,
+    "built_at_unix": 1780436923,
+    "build_ms": 318
+  },
+  "agents": [
+    {
+      "agent_id": "agent_0",
+      "tail_len": 960,
+      "roundtrip_ppl": 6.098455905914307,
+      "forward_ms": 1590.8782482147217,
+      "oracle_ppl": 6.098455905914307,
+      "delta_ppl_pct": 0.0
+    }
+  ],
+  "memory_accounting": {
+    "shared_pool_bytes": 2260992,
+    "shells_bytes": [
+      914315620
+    ],
+    "total_with_sharing_bytes": 916576612,
+    "raw_bytes_per_agent": 201326592,
+    "naive_total_bytes": 201326592,
+    "memory_reduction_factor": 0.21965058824782668
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_kv_heads": 32,
+    "head_dim": 64
+  },
+  "completed_at": "2026-06-02T16:50:57.316611"
+}

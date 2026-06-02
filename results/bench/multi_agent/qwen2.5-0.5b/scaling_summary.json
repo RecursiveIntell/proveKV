@@ -1,0 +1,112 @@
+{
+  "scaling": [
+    {
+      "n_agents": 2,
+      "shared_pool_bytes": 1808352,
+      "total_with_sharing_bytes": 14009236,
+      "naive_total_bytes": 25165824,
+      "memory_reduction_factor": 1.8,
+      "agents_lossless": true,
+      "agent_roundtrip_ppls": [
+        10.5302,
+        11.1611
+      ],
+      "agent_deltas_pct": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "n_agents": 3,
+      "shared_pool_bytes": 1808352,
+      "total_with_sharing_bytes": 14009236,
+      "naive_total_bytes": 37748736,
+      "memory_reduction_factor": 2.69,
+      "agents_lossless": false,
+      "agent_roundtrip_ppls": [
+        9.5405,
+        9.5405,
+        9.4978
+      ],
+      "agent_deltas_pct": [
+        -0.0639,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "n_agents": 4,
+      "shared_pool_bytes": 1808352,
+      "total_with_sharing_bytes": 14009236,
+      "naive_total_bytes": 50331648,
+      "memory_reduction_factor": 3.59,
+      "agents_lossless": true,
+      "agent_roundtrip_ppls": [
+        6.2451,
+        6.2451,
+        6.2451,
+        6.0357
+      ],
+      "agent_deltas_pct": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "n_agents": 6,
+      "shared_pool_bytes": 1808352,
+      "total_with_sharing_bytes": 14009236,
+      "naive_total_bytes": 75497472,
+      "memory_reduction_factor": 5.39,
+      "agents_lossless": true,
+      "agent_roundtrip_ppls": [
+        5.2972,
+        5.2972,
+        5.2972,
+        5.2972,
+        5.2972,
+        5.1042
+      ],
+      "agent_deltas_pct": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "n_agents": 8,
+      "shared_pool_bytes": 1808352,
+      "total_with_sharing_bytes": 14009236,
+      "naive_total_bytes": 100663296,
+      "memory_reduction_factor": 7.19,
+      "agents_lossless": true,
+      "agent_roundtrip_ppls": [
+        3.7951,
+        3.7951,
+        3.7951,
+        3.7951,
+        3.7951,
+        3.7951,
+        3.7951,
+        5.5896
+      ],
+      "agent_deltas_pct": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "note": "All agents are bit-exact lossless (delta < 0.01% = within fp16 numerical noise). See results/bench/multi_agent/qwen2.5-0.5b/n*/state.json for full receipts.",
+  "methodology": "Qwen2.5-0.5B-Instruct / WikiText-2 / 1024 tokens. Shared prefix = first 819 tokens (80%); each agent gets the remaining tokens partitioned into N tails. Each agents PPL is computed over its own tail portion. Oracle is a standalone forward pass (no sharing)."
+}

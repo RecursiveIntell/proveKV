@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0.0",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_slug": "qwen2.5-0.5b",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_agents": 6,
+  "shared_frac": 0.8,
+  "shared_pool": {
+    "pool_id": "49134568568cae37b39a52e4074654ec5fb3d909e74d1cf8e6fe38446583bc8b",
+    "num_shared_tokens": 819,
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64,
+    "shared_codec": "\"fib_k4_n32\"",
+    "compression_ratio": 11.130434782608695,
+    "pool_size_bytes": 1808352,
+    "build_seed": 42,
+    "built_at_unix": 1780433844,
+    "build_ms": 316
+  },
+  "agents": [
+    {
+      "agent_id": "agent_0",
+      "tail_len": 34,
+      "roundtrip_ppl": 5.2972025871276855,
+      "forward_ms": 322.44277000427246,
+      "oracle_ppl": 5.2972025871276855,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_1",
+      "tail_len": 34,
+      "roundtrip_ppl": 5.2972025871276855,
+      "forward_ms": 110.47029495239258,
+      "oracle_ppl": 5.2972025871276855,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_2",
+      "tail_len": 34,
+      "roundtrip_ppl": 5.2972025871276855,
+      "forward_ms": 114.79926109313965,
+      "oracle_ppl": 5.2972025871276855,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_3",
+      "tail_len": 34,
+      "roundtrip_ppl": 5.2972025871276855,
+      "forward_ms": 115.02289772033691,
+      "oracle_ppl": 5.2972025871276855,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_4",
+      "tail_len": 34,
+      "roundtrip_ppl": 5.2972025871276855,
+      "forward_ms": 111.73582077026367,
+      "oracle_ppl": 5.2972025871276855,
+      "delta_ppl_pct": 0.0
+    },
+    {
+      "agent_id": "agent_5",
+      "tail_len": 35,
+      "roundtrip_ppl": 5.104240417480469,
+      "forward_ms": 112.37859725952148,
+      "oracle_ppl": 5.104240417480469,
+      "delta_ppl_pct": 0.0
+    }
+  ],
+  "memory_accounting": {
+    "shared_pool_bytes": 1808352,
+    "shells_bytes": [
+      2024238,
+      2022737,
+      2024231,
+      2023916,
+      2023527,
+      2082235
+    ],
+    "total_with_sharing_bytes": 14009236,
+    "raw_bytes_per_agent": 12582912,
+    "naive_total_bytes": 75497472,
+    "memory_reduction_factor": 5.389121291125369
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_kv_heads": 2,
+    "head_dim": 64
+  },
+  "completed_at": "2026-06-02T15:58:03.060540"
+}

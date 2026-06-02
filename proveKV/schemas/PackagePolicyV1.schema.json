@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://recursiveintell.local/schemas/PackagePolicyV1.schema.json",
+  "title": "PackagePolicyV1",
+  "type": "object",
+  "required": ["schema", "package", "modes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "PackagePolicyV1" },
+    "package": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "type": "string" },
+        "root": { "type": "string" }
+      }
+    },
+    "modes": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/modePolicy" }
+    },
+    "protected_root_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/requiredFile" }
+    },
+    "allowed_extensions": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^\\." }
+    },
+    "allowed_basenames": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "path_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pathRule" }
+    },
+    "ecosystem_parity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "default_severity": { "enum": ["off", "info", "warning", "error"] },
+        "adapters": {
+          "type": "object",
+          "additionalProperties": { "enum": ["off", "info", "warning", "error"] }
+        }
+      }
+    },
+    "root_hygiene": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "archive_root_package_artifacts": { "type": "boolean" },
+        "archive_root_markdown_noise": { "type": "boolean" },
+        "archive_root": { "type": "string" },
+        "forbidden_root_patterns": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "check_secrets": { "type": "boolean" },
+        "allow_secret_like_names": { "type": "boolean" },
+        "follow_symlinks": { "type": "boolean" },
+        "fail_on_unicode_collision": { "type": "boolean" },
+        "fail_on_case_collision": { "type": "boolean" },
+        "fail_on_windows_reserved_name": { "type": "boolean" },
+        "max_file_size_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formats": { "type": "array", "items": { "enum": ["zip", "tar.gz"] } },
+        "deterministic_timestamps": { "type": "boolean" },
+        "source_date_epoch": { "type": ["integer", "string", "null"] },
+        "compresslevel": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "emit_decision_log": { "type": "boolean" },
+        "emit_checksums": { "type": "boolean" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "emit": { "type": "boolean" },
+        "predicate": { "enum": ["slsa-lite", "intoto-lite"] }
+      }
+    },
+    "sbom": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "emit": { "type": "boolean" },
+        "format": { "enum": ["spdx-lite", "cyclonedx-lite"] }
+      }
+    }
+  },
+  "$defs": {
+    "modePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_logs": { "type": "boolean" },
+        "include_patch_artifacts": { "type": "boolean" },
+        "include_codex_artifacts": { "type": "boolean" },
+        "include_doc_binaries": { "type": "boolean" },
+        "include_images": { "type": "boolean" },
+        "include_root_package_archive": { "type": "boolean" },
+        "ecosystem_parity_severity": { "enum": ["off", "info", "warning", "error"] }
+      }
+    },
+    "requiredFile": {
+      "type": "object",
+      "required": ["path", "mode"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "mode": { "enum": ["all", "context", "audit", "release"] },
+        "severity": { "enum": ["warning", "error"] },
+        "reason": { "type": "string" }
+      }
+    },
+    "pathRule": {
+      "type": "object",
+      "required": ["pattern", "decision"],
+      "additionalProperties": false,
+      "properties": {
+        "pattern": { "type": "string" },
+        "decision": { "enum": ["include", "exclude", "quarantine", "archive-root"] },
+        "modes": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string" },
+        "severity": { "enum": ["info", "warning", "error"] }
+      }
+    }
+  }
+}

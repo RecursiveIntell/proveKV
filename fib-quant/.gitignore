@@ -1,0 +1,72 @@
+/target/
+**/target/
+
+# Cargo/package outputs
+*.crate
+.cargo_vcs_info.json
+Cargo.toml.orig
+
+# Local release and hardening receipts
+target/
+target-*/
+release-receipts/
+final-hardening/
+
+# Local Codex/operator bundles that are not part of the public crate repository
+.agents/
+.codex/
+overlays/
+phase_prompts/
+manual_backstop_prompts/
+matrices/
+docs/codex-runs/
+z.py
+OPERATOR_PASTE_FIRST.md
+AGENTS_APPENDIX_FIBQUANT_KV_PRODUCTION.md
+0[0-9]_*.md
+1[0-9]_*.md
+PACK_MANIFEST.json
+SOURCE_BASIS.md
+
+# Codex/source-context generated archives and sidecars
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.codex-archive.json
+*.manifest.json
+*.excluded.json
+*.findings.json
+*.report.md
+
+# Local editor, OS, and scratch state
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.log
+.idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python helper cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Rust tooling noise
+tarpaulin-report.html
+coverage/
+lcov.info

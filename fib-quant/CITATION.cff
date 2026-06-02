@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+title: fib-quant
+message: "If you use this crate, cite both this implementation and the FibQuant paper."
+type: software
+authors:
+  - family-names: Stevenson
+    given-names: Josh
+repository-code: "https://github.com/recursiveintell/fib-quant"
+license: Apache-2.0
+version: 0.1.0-alpha.1
+references:
+  - type: article
+    title: "FibQuant: Universal Vector Quantization for Random-Access KV-Cache Compression"
+    authors:
+      - family-names: Lee
+        given-names: Namyoon
+      - family-names: Kim
+        given-names: Yongjune
+    year: 2026
+    date-released: 2026-05-12
+    url: "https://arxiv.org/abs/2605.11478"

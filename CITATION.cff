@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you reference this measurement in academic work, please cite it as below."
+type: software
+title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool — lossless at 11.13x on a real 1.7B-parameter LLM"
+version: 1.0.0
+date-released: 2026-06-02
+license: MIT
+authors:
+  - family-names: Stevenson
+    given-names: Josh
+    alias: sikmindz
+    affiliation: RecursiveIntell
+references:
+  - type: article
+    title: "FibQuant: Universal Vector Quantization for Random-Access KV-Cache Compression"
+    authors:
+      - family-names: Lee
+        given-names: Namyoon
+      - family-names: Kim
+        given-names: Yongjune
+    year: 2026
+    month: 5
+    identifier: "arXiv:2605.11478"
+    url: "https://arxiv.org/abs/2605.11478"
+  - type: software
+    title: "fib-quant: clean-room Rust port of the FibQuant codec"
+    version: "0.1.0-alpha.1"
+    url: "https://github.com/RecursiveIntell/Libraries/tree/main/fib-quant"
