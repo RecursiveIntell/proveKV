@@ -1,6 +1,6 @@
 [package]
 name = "turbo-quant"
-version = "0.2.0"
+version = "0.2.2"
 edition = "2021"
 rust-version = "1.75.0"
 description = "Experimental vector compression sidecars with PolarQuant, TurboQuant, QJL sketches, wire formats, and benchmark receipts"
