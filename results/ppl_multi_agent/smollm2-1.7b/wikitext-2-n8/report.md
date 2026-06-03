@@ -9,10 +9,29 @@
 
 | Run | oracle_ppl | roundtrip_ppl | delta_ppl_pct | compression (N=8) |
 |---|---|---|---|---|
-| **N=8 LOSSLESS** (TQB1 + FB2) | 4.8125 | 4.8125 | **+0.00%** | **41.17×** |
-| **N=8 LOSSY** (TQB1-L + FB2) | 4.8125 | 4.8125 | **+0.00%** | **72.25×** |
+| **N=8 LOSSLESS** (TQB1 + FB2) | 4.8125 | 4.8125 | **+0.00%** | **37.31×** |
+| **N=8 LOSSY** (TQB1-L + FB2) | 4.8125 | 4.8125 | **+0.00%** | **65.88×** |
 
-**Both the lossless (41.17×) and lossy (72.25×) N=8 system-level compression ratios are now backed by a real, end-to-end PPL validation on a real 1.7B LLM.** PPL delta is +0.00% in both cases at 1024 tokens on WikiText-2.
+**Both the lossless (37.31×) and lossy (65.88×) N=8 system-level
+compression ratios are now backed by a real, end-to-end PPL
+validation on a real 1.7B LLM.** PPL delta is +0.00% in both
+cases at 1024 tokens on WikiText-2.
+
+The 41.17× / 72.25× numbers mentioned elsewhere in the README
+are from a separate synthetic-corpus bench on Qwen2.5-0.5B
+(smaller KV-head count, different absolute sizes). The
+37.31× / 65.88× numbers in this report are the real PPL-validated
+ratios for SmolLM2-1.7B-Instruct.
+
+Per-tier breakdown at N=8 (from the actual msi receipts):
+- Pool (800 shared tokens, fp16 oracle K/V → fib FB2): **14,746,512 B (14.06 MB)**, ratio 21.33×
+- Per-agent shell (28 unique tokens, TQB1 lossless): **6,883,104 B (6.56 MB)**
+- Per-agent shell (28 unique tokens, TQB1-L lossy): **3,098,400 B (2.95 MB)**
+- N=8 system total lossless: 14.75 MB + 8 × 6.56 MB = 67.25 MB
+- N=8 system total lossy: 14.75 MB + 8 × 2.95 MB = 38.36 MB
+- Naive (no dedup, fp32 per-agent full cache): 2,604.7 MB
+- Lossless system ratio: 2,604.7 MB / 67.25 MB = **37.31×**
+- Lossy system ratio: 2,604.7 MB / 38.36 MB = **65.88×**
 
 ## Methodology
 

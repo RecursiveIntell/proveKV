@@ -48,11 +48,17 @@ def load_json(rel):
 
 # Single-pool PPL validations (the per-pool cross-validation matrix)
 POOL_RUNS = [
-    ("smollm2-1.7b",   "wikitext-2",     1024,  0.0,  36175872,  "results/bench/ppl/smollm2-1.7b/wikitext-2/state.json"),
-    ("tinyllama-1.1b", "wikitext-2",     1024,  0.0,  4145152,   "results/bench/ppl/tinyllama-1.1b/wikitext-2/state.json"),
-    ("qwen2.5-0.5b",   "wikitext-2",     1024,  0.0,  2260992,   "results/bench/ppl/qwen2.5-0.5b/wikitext-2/state.json"),
-    ("smollm2-1.7b",   "code-source",    1024,  -7.34,36175872,  "results/bench/ppl/smollm2-1.7b/code-source/state.json"),
-    ("smollm2-1.7b",   "wikitext-2",     1280,  0.0,  45219840,  "results/bench/ppl/smollm2-1.7b/wikitext-2-n1280/state.json"),
+    # Legacy JSON wire format (11.13x, 5 configs)
+    ("smollm2-1.7b",   "wikitext-2",     1024,  0.0,  36175872,  11.13, "results/bench/ppl/smollm2-1.7b/wikitext-2/state.json"),
+    ("tinyllama-1.1b", "wikitext-2",     1024,  0.0,  4145152,   11.13, "results/bench/ppl/tinyllama-1.1b/wikitext-2/state.json"),
+    ("qwen2.5-0.5b",   "wikitext-2",     1024,  0.0,  2260992,   11.13, "results/bench/ppl/qwen2.5-0.5b/wikitext-2/state.json"),
+    ("smollm2-1.7b",   "code-source",    1024,  -7.34,36175872,  11.13, "results/bench/ppl/smollm2-1.7b/code-source/state.json"),
+    ("smollm2-1.7b",   "wikitext-2",     1280,  0.0,  45219840,  11.13, "results/bench/ppl/smollm2-1.7b/wikitext-2-n1280/state.json"),
+    # New FB2 batched wire format (21.33x, same codec math)
+    # (The "FB2-L" lossy run is identical in pool size and PPL — it's a
+    #  pass-through of the lossless config; the actual lossy variant lives
+    #  in the shell tier, exercised in the ppl_multi_agent bench below.)
+    ("smollm2-1.7b (FB2)",   "wikitext-2", 1024,  0.0,  18875280,  21.33, "results/ppl/smollm2-1.7b/wikitext-2-lossless/state.json"),
 ]
 
 # Multi-agent sweep (lossless + lossy, batched wire formats)
@@ -117,9 +123,10 @@ def make_architecture():
         )
         ax.add_patch(arr)
 
-    # ---- "× N agents" annotation INSIDE the column ----
-    ax.text(7.15, 1.05, "× N agents (one shell per agent)",
-            ha="left", va="center", fontsize=8.5, color=C_MUTED, style="italic")
+    # No standalone "× N" annotation here: the subtitle ("Shown: 3 of
+    # N agents") + the third label "agent N-1" + the "N=8" qualifier on
+    # the brace label all communicate the convention. Adding a fourth
+    # mark crowds the right edge.
 
     # ---- Naive baseline ----
     naive = FancyBboxPatch(
@@ -219,8 +226,10 @@ def make_n_scaling():
         # is identical on every bar.
         ax_pk.text(i - width/2 - 0.04, 5.30, f"{lb:.2f} MB",
                    ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
+        is_headline = (i == len(lossless_mb) - 1)
+        rs = 13 if is_headline else 10
         ax_pk.text(i - width/2 - 0.04, 4.90, f"{f_lossless[i]:.1f}x",
-                   ha="center", fontsize=10, color=C_FIB, fontweight="bold")
+                   ha="center", fontsize=rs, color=C_FIB, fontweight="bold")
         ax_pk.text(i + width/2 + 0.04, 5.30, f"{ly:.2f} MB",
                    ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
         ax_pk.text(i + width/2 + 0.04, 4.90, f"{f_lossy[i]:.1f}x",
@@ -260,12 +269,17 @@ def make_cross_validation():
     labels  = []
     mb      = []
     deltas  = []
-    for model, corpus, n_tok, delta, pool, _src in POOL_RUNS:
+    mb_per_row_ratio_x = []
+    for model, corpus, n_tok, delta, pool, ratio_x, _src in POOL_RUNS:
         mb.append(pool / 1024 / 1024)
         deltas.append(delta)
+        mb_per_row_ratio_x.append(ratio_x)
         short = model.replace("smollm2-1.7b", "smollm2")
         short = short.replace("tinyllama-1.1b", "tinyllama")
         short = short.replace("qwen2.5-0.5b", "qwen0.5b")
+        # Shorten the wire-format suffix so labels fit in the bar width
+        if short.endswith(" (FB2)"):
+            short = short.replace(" (FB2)", "+FB2")
         labels.append(f"{short}\n{corpus}\nn={n_tok}")
 
     x = range(len(labels))
@@ -273,28 +287,38 @@ def make_cross_validation():
     bars = ax.bar(x, mb, color=bar_colors, edgecolor="white", width=0.65)
 
     # PPL delta as a SECOND row of text above the bar (never inside)
+    # Per-bar compression ratio: legacy JSON wire = 11.13x, FB2 batched = 21.33x
+    # (all measured on the same SmolLM2 + WikiText-2 + 1024 tokens setup).
+    raw_size_bytes = 201341281  # fp16 K/V cache size at n=1024, 24 layers, 32 heads, head_dim=64
     for i, (m, d) in enumerate(zip(mb, deltas)):
-        # MB above bar
-        ax.text(i, m + 1.8, f"{m:.1f} MB", ha="center",
+        # Three-line stack entirely ABOVE the bar top, so the labels never
+        # overlap the bar fill. The stack height is constant (3.6 units)
+        # regardless of bar height; we extend the ylim to give short bars
+        # room to display their stack in the chart's headroom.
+        bar_top = m
+        # Line 1 (top): compression ratio in a neutral tone (not the
+        # bar's color, so it doesn't blend with the fill).
+        ratio_x = mb_per_row_ratio_x[i]
+        ax.text(i, bar_top + 3.5, f"{ratio_x:.2f}× lossless",
+                ha="center", va="bottom", fontsize=9, color=C_MUTED, fontweight="bold")
+        # Line 2 (middle): MB value (the headline number)
+        ax.text(i, bar_top + 2.0, f"{m:.1f} MB", ha="center",
                 fontsize=11, fontweight="bold", color=C_TEXT)
-        # Per-bar compression ratio (the "11.13x lossless" claim from the
-        # title, expressed per-bar so a reader can verify it on the chart).
-        ax.text(i, m + 0.5, f"11.13× lossless",
-                ha="center", fontsize=8.5, color=C_FIB, fontweight="bold")
-        # PPL delta just below, smaller, color-coded
+        # Line 3 (bottom, just above the bar): PPL delta, color-coded
+        # Shorter PPL text to fit in the bar width
         if d == 0:
-            ax.text(i, m - 0.4, "ΔPPL = 0.00% (bit-exact)",
-                    ha="center", fontsize=8.5, color=C_GOOD, fontweight="bold")
+            ppl_text = "ΔPPL = 0.00%"
         else:
-            ax.text(i, m - 0.4, f"ΔPPL = {d:+.2f}% (cleaner than noisy oracle)",
-                    ha="center", fontsize=8.5, color=C_LOSSY, fontweight="bold")
+            ppl_text = f"ΔPPL = {d:+.2f}%"
+        ppl_color = C_GOOD if d == 0 else C_LOSSY
+        ax.text(i, bar_top + 0.7, ppl_text,
+                ha="center", va="bottom", fontsize=8.5, color=ppl_color, fontweight="bold")
 
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels, fontsize=8.5)
     ax.set_ylabel("Pool size (MB)")
-    ax.set_title("Single-pool validation: 5 (model, dataset) configurations, all 11.13× lossless  ·  "
-                 "Qwen0.5B, TinyLlama-1.1B, SmolLM2-1.7B",
-                 fontsize=11, pad=14)
+    ax.set_title("Single-pool validation: 6 configurations  ·  legacy 11.13× + FB2 batched 21.33×, all lossless",
+                 fontsize=10.5, pad=14)
     ax.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0)
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)
@@ -360,8 +384,8 @@ def make_wire_story():
     # math unchanged). TQB1-L is shown here for completeness, but it's a
     # codec-math change (BlockLogU8 quantization of the radii), not a
     # wire-format change. The title scopes to the lossless path.
-    ax.set_title("Per-block wire size: 472 B (JSON) → 40 B (TQB1-L)  ·  3.5× lossless, 11.8× with lossy codec",
-                 fontsize=11, pad=12)
+    ax.set_title("Per-block wire size: 472 B → 40 B  ·  3.5× lossless, 11.8× with lossy codec",
+                 fontsize=11.5, pad=10)
     ax.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0, which="both")
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)

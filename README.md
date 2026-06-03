@@ -1,8 +1,8 @@
 # proveKV
 
 **A two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems.**
-**41.17× lossless system-level memory reduction at N=8 agents, 72.25× with opt-in lossy shell.**
-**Zero PPL regression in every measured run.**
+**37.31× lossless system-level memory reduction at N=8 agents (PPL-validated), 65.88× with opt-in lossy shell. Zero PPL regression.**
+**The per-tier breakdown (Qwen2.5-0.5B, 1024 tokens, 80% shared) shows up to 41.17× / 72.25× — see the per-tier table below for which number is what.**
 
 <p align="center">
   <a href="docs/img/architecture.svg"><img src="docs/img/architecture.svg" alt="proveKV two-tier architecture" width="100%"></a>
@@ -34,6 +34,18 @@ formats, the multi-agent bench — is the contribution of this repository.
 *(Qwen2.5-0.5B-Instruct · 1024 tokens · 80% shared prefix · receipts at
 `results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/`.)*
 
+*For the PPL-validated system-level numbers on a real LLM
+(SmolLM2-1.7B-Instruct + WikiText-2 at 1024 tokens, 800 shared
++ 28 unique × 8 agents, eval window [800, 1024)), see
+[Section 4](#4-system-level-n8-ppl-bench-the-full-multi-agent-receipt)
+below: **37.31× lossless / 65.88× lossy at +0.00% PPL delta**.
+The lower ratio vs. Qwen2.5-0.5B is expected: SmolLM2-1.7B has
+32 KV heads (vs 2 in Qwen2.5-0.5B), so the per-agent shell's
+3.1-6.9 MB of TQB1-encoded K/V is 16× larger in absolute terms
+for the same 28 tokens. The system ratio vs. naive still holds
+because the shared pool is also 16× larger, and pool compression
+(21.33×) is much better than per-agent shell compression.)*
+
 <p align="center">
   <a href="docs/img/n_scaling.svg"><img src="docs/img/n_scaling.svg" alt="N-scaling: proveKV stays flat, naive grows linearly" width="100%"></a>
 </p>
@@ -61,10 +73,12 @@ turbo can't replicate at matched quality.
 - The **content-addressed, build-once pool primitive** with a
   blake3-digested manifest and per-block receipts
 - The **batched binary wire formats** (FB2 for fib, TQB1 / TQB1-L for
-  turbo) that made 21.3× / 41.17× / 72.25× real numbers instead of
-  0.5× JSON-overhead results
-- The **measured 11.13× lossless** and **41.17× lossless system-level**
-  numbers on three model families with state.json receipts in the repo
+  turbo) that made the 21.3× / 37.31× / 65.88× PPL-validated
+  ratios (and the 41.17× / 72.25× synthetic-bench ratios on
+  Qwen2.5-0.5B) real numbers instead of 0.5× JSON-overhead results
+- The **measured 11.13× lossless** and **37.31× lossless
+  PPL-validated system-level** numbers with state.json receipts in
+  the repo
 - The **measured lossy shell** with PPL receipts (the
   `ppl_shell/smollm2-1.7b/wikitext-2/` bench) — opt-in, not a hand-wave
 
@@ -93,6 +107,21 @@ turbo can't replicate at matched quality.
 | Cross-model (Qwen)   | Qwen2.5-0.5B-Instruct   | WikiText-2  | 1024 | 7.6123 | 7.6123 | **+0.00%** |  2.3 MB |
 | Cross-corpus (code)  | SmolLM2-1.7B-Instruct   | code-source | 1024 | 5.1379 | 4.7608 | **−7.34%** | 36.2 MB |
 | Longer context       | SmolLM2-1.7B-Instruct   | WikiText-2  | 1280 | 4.8249 | 4.8249 | **+0.00%** | 45.2 MB |
+| **FB2 batched (lossless)** | SmolLM2-1.7B-Instruct   | WikiText-2  | 1024 | 4.7608 | 4.7608 | **+0.00%** | **18.0 MB (21.33×)** |
+
+The first five rows are the legacy JSON wire format at **11.13×**
+(5.6× vs fp16 raw). The last row is the new FB2 batched wire
+format on the same model and corpus at **21.33×** (10.7× vs fp16
+raw) — the compression ratio nearly doubles without changing the
+codec math, and PPL stays bit-exact. The "lossy flag on the shared
+tier" produces a byte-identical pool to the lossless FB2 run (the
+lossy variant in production is the **shell tier** TQB1-L, exercised
+in the `ppl_multi_agent` bench below); for documentation the
+duplicate `wikitext-2-lossy` receipt is committed but not shown in
+the table. Receipts at
+[`results/ppl/smollm2-1.7b/wikitext-2-lossless/`](results/ppl/smollm2-1.7b/wikitext-2-lossless/)
+and
+[`results/ppl/smollm2-1.7b/wikitext-2-lossy/`](results/ppl/smollm2-1.7b/wikitext-2-lossy/).
 
 The 11.13× compression ratio is **invariant** across all five configurations.
 The codec is lossless for every model (SmolLM2, TinyLlama, Qwen2.5),
@@ -136,11 +165,14 @@ At N=8, **944 KB shared + 3.46 MB shells = 4.40 MB total** for an
 
 ### 3. Lossy shell PPL bench (the Tier-2 receipt)
 
-The 72.25× lossy number is not a hand-wave. The lossy tier
-(BlockLogU8 quantization of the turbo radii) is end-to-end benched
-on SmolLM2-1.7B-Instruct with the 800-token shared / 224-token
-shell split, and the roundtrip PPL is **byte-identical** to the
-oracle at 1024 tokens.
+The lossy tier (BlockLogU8 quantization of the turbo radii) is
+end-to-end benched on SmolLM2-1.7B-Instruct with the 800-token
+shared / 224-token shell split, and the roundtrip PPL is
+**byte-identical** to the oracle at 1024 tokens. (The 72.25×
+lossy system N=8 number, mentioned in other parts of the
+README, is a separate measurement on Qwen2.5-0.5B — see the
+table at Section 2. The PPL-validated lossy N=8 number on
+SmolLM2-1.7B is **65.88×** — see Section 4.)
 
 | Shell tier | Shell size | vs lossless | Oracle PPL | Roundtrip PPL | ΔPPL |
 |---|---|---|---|---|---|
@@ -155,16 +187,20 @@ on out-of-distribution corpora is a separate question for future work.
 
 ### 4. System-level N=8 PPL bench (the full multi-agent receipt)
 
-The 41.17× lossless and 72.25× lossy system-level numbers are both
+The 37.31× lossless and 65.88× lossy system-level numbers are both
 PPL-validated on SmolLM2-1.7B-Instruct + WikiText-2 at 1024 tokens.
 The bench: 800 shared tokens in the pool + 28 unique tokens × 8
 agents in shells. PPL is computed over the eval window [800, 1024)
-which covers all 8 agents' K/V patches.
+which covers all 8 agents' K/V patches. (The earlier 41.17× /
+72.25× headlines at the top of this README are from a separate
+synthetic-corpus bench on Qwen2.5-0.5B with 1024 tokens and
+80% shared prefix; those are size-only measurements, not
+PPL-validated.)
 
 | N=8 system | Oracle PPL | Roundtrip PPL | ΔPPL | System ratio |
 |---|---|---|---|---|
-| **Lossless (TQB1 + FB2)**    | 4.8125 | 4.8125 | **+0.00%** | **41.17×** |
-| **Lossy (TQB1-L + FB2)**     | 4.8125 | 4.8125 | **+0.00%** | **72.25×** |
+| **Lossless (TQB1 + FB2)**    | 4.8125 | 4.8125 | **+0.00%** | **37.31×** |
+| **Lossy (TQB1-L + FB2)**     | 4.8125 | 4.8125 | **+0.00%** | **65.88×** |
 
 Receipts at
 [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/)
