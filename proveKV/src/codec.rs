@@ -1,3 +1,4 @@
+use std::any::Any;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
@@ -7,6 +8,12 @@ use crate::policy::CodecId;
 pub trait KVecCodec: Send + Sync {
     /// Return the codec identifier ("fib_k4_n32", "turbo_8bit", etc.).
     fn codec_id(&self) -> CodecId;
+
+    /// Downcast hook for callers that need the concrete adapter (e.g. to
+    /// call `encode_batch_compact` / `decode_batch_compact` which are
+    /// inherent methods on the adapter, not on the trait). Returns `&dyn Any`
+    /// so callers can `downcast_ref::<ConcreteType>()` to recover the type.
+    fn as_any(&self) -> &dyn Any;
 
     /// Encode a vector of f32 values into a compressed byte payload.
     fn encode(&self, vector: &[f32], seed: u64) -> Result<Vec<u8>>;
@@ -115,6 +122,10 @@ impl KVecCodec for ExactFallbackCodec {
         crate::policy::CODEC_EXACT_FALLBACK.into()
     }
 
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn encode(&self, vector: &[f32], _seed: u64) -> Result<Vec<u8>> {
         if vector.len() != self.dim {
             return Err(crate::error::ProveKvError::DimensionMismatch {
@@ -157,10 +168,15 @@ impl KVecCodec for ExactFallbackCodec {
 
 /// Adapter for the turbo-quant crate (8-bit, 32 projections).
 #[cfg(feature = "turbo")]
+#[derive(Clone, Copy)]
 pub struct TurboQuantAdapter {
     dim: usize,
     bits: u8,
     projections: usize,
+    /// How to compress radii in the wire format. Defaults to `Lossless`
+    /// so receipts remain bit-exact; set to `Lossy` for the 58.14x
+    /// two-tier system number.
+    radii_compression: crate::policy::RadiiCompression,
 }
 
 #[cfg(feature = "turbo")]
@@ -183,7 +199,128 @@ impl TurboQuantAdapter {
             dim,
             bits,
             projections,
+            radii_compression: crate::policy::RadiiCompression::Lossless,
         })
+    }
+
+    /// Construct with an explicit radii compression policy. The default
+    /// `new` constructor uses `Lossless` (backward compat).
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_radii_compression(
+        dim: usize,
+        bits: u8,
+        projections: usize,
+        radii_compression: crate::policy::RadiiCompression,
+    ) -> Result<Self> {
+        if dim == 0 {
+            return Err(crate::error::ProveKvError::InvalidPolicy(
+                "turbo dim must be > 0".into(),
+            ));
+        }
+        if dim % 2 != 0 {
+            return Err(crate::error::ProveKvError::InvalidPolicy(format!(
+                "turbo requires even dimension, got {}",
+                dim
+            )));
+        }
+        Ok(Self {
+            dim,
+            bits,
+            projections,
+            radii_compression,
+        })
+    }
+}
+
+#[cfg(feature = "turbo")]
+impl TurboQuantAdapter {
+    /// Batched encode using the TQB1 wire format. Builds a single quantizer,
+    /// encodes N vectors, and writes them with a single shared header (one
+    /// profile header for the whole batch instead of one per vector).
+    ///
+    /// For a batch of N vectors at head_dim=64, projections=32, b=2:
+    /// - TQW1 (per-vector header): 46 + 136 = 182 bytes/vector, total 182*N
+    /// - TQB1 (batched header):     38 + 136*N bytes total
+    /// - Savings: 1.34x per batch
+    ///
+    /// Most useful when the caller has a full layer's worth of vectors
+    /// (num_tokens * num_kv_heads * 2 K+V) to encode at once.
+    pub fn encode_batch_compact(&self, vectors: &[&[f32]], seed: u64) -> Result<Vec<u8>> {
+        let quantizer = turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed)
+            .map_err(|e| {
+                crate::error::ProveKvError::CompressionFailed(format!(
+                    "turbo quantizer init failed: {e}"
+                ))
+            })?;
+
+        let codes: Vec<turbo_quant::TurboCode> = vectors
+            .iter()
+            .map(|v| {
+                quantizer.encode(v).map_err(|e| {
+                    crate::error::ProveKvError::CompressionFailed(format!(
+                        "turbo encode failed: {e}"
+                    ))
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        // Dispatch to the right wire encoder based on the configured
+        // radii compression. The decoder reads the radii_codec flag from
+        // the wire and applies the inverse, so a lossless-written batch
+        // and a lossy-written batch with the same seed/dim/projections
+        // are both decodable.
+        let wire_result = match self.radii_compression {
+            crate::policy::RadiiCompression::Lossless => {
+                turbo_quant::TurboCodeWireV1::encode_batch(&codes, &quantizer)
+            }
+            crate::policy::RadiiCompression::Lossy => {
+                turbo_quant::TurboCodeWireV1::encode_batch_with_radii(
+                    &codes,
+                    &quantizer,
+                    turbo_quant::radius::RadiusCodecProfileV1::BlockLogU8,
+                )
+            }
+        };
+        wire_result.map_err(|e| {
+            crate::error::ProveKvError::CompressionFailed(format!(
+                "turbo batched wire encode failed: {e}"
+            ))
+        })
+    }
+
+    /// Batched decode using the TQB1 wire format. Returns a Vec<f32> per
+    /// input vector (in the same order).
+    pub fn decode_batch_compact(&self, payload: &[u8], seed: u64) -> Result<Vec<Vec<f32>>> {
+        let quantizer = turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed)
+            .map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "turbo quantizer init failed: {e}"
+                ))
+            })?;
+
+        let codes = turbo_quant::TurboCodeWireV1::decode_batch(payload, &quantizer).map_err(|e| {
+            crate::error::ProveKvError::DecompressionFailed(format!(
+                "turbo batched wire decode failed: {e}"
+            ))
+        })?;
+
+        let polar_quant = turbo_quant::PolarQuantizer::new(self.dim, self.bits - 1, seed)
+            .map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "turbo polar quantizer init failed: {e}"
+                ))
+            })?;
+
+        let mut out = Vec::with_capacity(codes.len());
+        for code in &codes {
+            let reconstructed = polar_quant.decode(&code.polar_code).map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "turbo decode failed: {e}"
+                ))
+            })?;
+            out.push(reconstructed);
+        }
+        Ok(out)
     }
 }
 
@@ -191,6 +328,10 @@ impl TurboQuantAdapter {
 impl KVecCodec for TurboQuantAdapter {
     fn codec_id(&self) -> CodecId {
         crate::policy::CODEC_TURBO_8BIT.into()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn encode(&self, vector: &[f32], seed: u64) -> Result<Vec<u8>> {
@@ -284,6 +425,7 @@ impl KVecCodec for TurboQuantAdapter {
 
 /// Adapter for the fib-quant crate (k=4, N=32, paper core path).
 #[cfg(feature = "fib")]
+#[derive(Clone, Copy)]
 pub struct FibQuantAdapter {
     dim: usize,
     k: u32,
@@ -352,12 +494,98 @@ impl FibQuantAdapter {
             ))
         })
     }
+
+    /// Batched encode using the FB2 wire format. Builds a single quantizer,
+    /// encodes N vectors, and writes them with a single shared profile
+    /// header (one profile header for the whole batch instead of one per
+    /// block).
+    ///
+    /// For fib_k4_n32 with head_dim=64:
+    /// - FB1 (per-block header): 11 + 12 = 23 bytes/block, total 23*N
+    /// - FB2 (batched header):   19 + 12*N bytes total
+    /// - Savings: 1.92x per block (47.8% reduction on the fib tier)
+    ///
+    /// Most useful when the caller has a full layer's worth of vectors
+    /// to encode at once.
+    pub fn encode_batch_compact(
+        &self,
+        vectors: &[&[f32]],
+        seed: u64,
+    ) -> Result<Vec<u8>> {
+        let quantizer = self.build_quantizer(seed)?;
+        let codes = quantizer.encode_batch(vectors).map_err(|e| {
+            crate::error::ProveKvError::CompressionFailed(format!(
+                "fib encode_batch failed: {}",
+                e
+            ))
+        })?;
+        let profile = quantizer.profile().clone();
+        fib_quant::FibCodeV1::encode_batch(&codes, &profile).map_err(|e| {
+            crate::error::ProveKvError::CompressionFailed(format!(
+                "fib batched wire encode failed: {}",
+                e
+            ))
+        })
+    }
+
+    /// Batched decode using the FB2 wire format. Returns a Vec<f32> per
+    /// input vector (in the same order). Falls back to per-block
+    /// `from_compact_bytes` if the payload uses the older FB1 format.
+    pub fn decode_batch_compact(
+        &self,
+        payload: &[u8],
+        seed: u64,
+    ) -> Result<Vec<Vec<f32>>> {
+        let quantizer = self.build_quantizer(seed)?;
+        let profile = quantizer.profile().clone();
+        // Detect format: FB2 = "FB2" magic, FB1 = "FB1" magic, else JSON.
+        let codes: Vec<fib_quant::FibCodeV1> = if payload.len() >= 3
+            && &payload[0..3] == fib_quant::BATCHED_MAGIC.as_slice()
+        {
+            fib_quant::FibCodeV1::decode_batch(payload, &profile).map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "fib batched wire decode failed: {}",
+                    e
+                ))
+            })?
+        } else if payload.len() >= 3 && payload[0..3] == fib_quant::COMPACT_MAGIC {
+            // Fallback to single-block FB1 decode (one block only).
+            let code = fib_quant::FibCodeV1::from_compact_bytes(payload, &profile).map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "fib compact decode failed: {}",
+                    e
+                ))
+            })?;
+            vec![code]
+        } else {
+            // Backward compat with JSON-encoded pools from older proveKV
+            // versions.
+            let code: fib_quant::FibCodeV1 =
+                serde_json::from_slice(payload).map_err(|e| {
+                    crate::error::ProveKvError::DecompressionFailed(format!(
+                        "fib code deserialize failed: {}",
+                        e
+                    ))
+                })?;
+            vec![code]
+        };
+        quantizer.decode_batch_fast(&codes).map_err(|e| {
+            crate::error::ProveKvError::DecompressionFailed(format!(
+                "fib decode_batch_fast failed: {}",
+                e
+            ))
+        })
+    }
 }
 
 #[cfg(feature = "fib")]
 impl KVecCodec for FibQuantAdapter {
     fn codec_id(&self) -> CodecId {
         crate::policy::CODEC_FIB_K4_N32.into()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn encode(&self, vector: &[f32], seed: u64) -> Result<Vec<u8>> {
@@ -490,7 +718,7 @@ pub fn create_codec(
     turbo_config: Option<&crate::policy::TurboConfig>,
 ) -> Result<Box<dyn KVecCodec>> {
     match codec_id {
-        crate::policy::CODEC_FIB_K4_N32 => {
+        crate::policy::CODEC_FIB_K4_N32 | crate::policy::CODEC_FIB_K4_N32_BATCHED => {
             #[cfg(feature = "fib")]
             {
                 let fc = fib_config.ok_or_else(|| {
@@ -509,12 +737,12 @@ pub fn create_codec(
             #[cfg(not(feature = "fib"))]
             {
                 Err(crate::error::ProveKvError::CodecUnavailable {
-                    codec: crate::policy::CODEC_FIB_K4_N32.into(),
+                    codec: codec_id.into(),
                     feature: "fib".into(),
                 })
             }
         }
-        crate::policy::CODEC_TURBO_8BIT => {
+        crate::policy::CODEC_TURBO_8BIT | crate::policy::CODEC_TURBO_8BIT_BATCHED => {
             #[cfg(feature = "turbo")]
             {
                 let tc = turbo_config.ok_or_else(|| {
@@ -528,7 +756,7 @@ pub fn create_codec(
             #[cfg(not(feature = "turbo"))]
             {
                 Err(crate::error::ProveKvError::CodecUnavailable {
-                    codec: crate::policy::CODEC_TURBO_8BIT.into(),
+                    codec: codec_id.into(),
                     feature: "turbo".into(),
                 })
             }

@@ -46,7 +46,10 @@ pub mod rotation;
 pub mod spherical_beta;
 
 pub use codebook::{build_initial_codebook, FibCodebookV1};
-pub use codec::{FibCodeV1, FibQuantizer, GpuStepReport, COMPACT_MAGIC, COMPACT_VERSION};
+pub use codec::{
+    FibCodeV1, FibQuantizer, GpuStepReport, BATCHED_MAGIC, BATCHED_VERSION, COMPACT_MAGIC,
+    COMPACT_VERSION,
+};
 pub use directions::{fibonacci_sphere_3d, fibonacci_spiral_2d, roberts_kronecker};
 pub use error::{FibQuantError, Result};
 pub use lloyd::{LloydRepairEventV1, LloydReportV1};

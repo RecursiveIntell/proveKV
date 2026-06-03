@@ -1,43 +1,44 @@
 use std::time::Instant;
 
-use crate::codec::{create_codec, CompressedBlock};
+use crate::codec::{create_codec, CompressedBlock, TurboQuantAdapter};
 use crate::error::{ProveKvError, Result};
 use crate::manifest::ShellManifest;
-use crate::policy::CODEC_TURBO_8BIT;
+use crate::policy::{is_batched_turbo, is_batched_turbo_lossy, CODEC_TURBO_8BIT_BATCHED, CODEC_TURBO_8BIT_BATCHED_LOSSY};
 use crate::pool::SharedKVPool;
 use crate::receipt::{now_unix, ShellMaterializeReceipt};
 
 /// One layer's worth of agent-unique compressed KV blocks.
+///
+/// Storage is dual-form: either batched (one `CompressedBlock` per K/V side
+/// holding the whole layer's worth of TQB1 batched bytes) or per-vector
+/// (one `CompressedBlock` per (token, head) for legacy receipts). The
+/// `key_codec` and `value_codec` of the blocks are the source of truth —
+/// batched blocks carry `turbo_8bit_batched`, legacy blocks carry
+/// `turbo_8bit`. Decoding dispatches per block.
 #[derive(Debug, Clone)]
 pub struct ShellLayer {
     /// Zero-based layer index.
     pub layer_index: u32,
-    /// Key blocks unique to this agent (turbo-quant compressed).
+    /// Key blocks unique to this agent. Batched: 1 block. Legacy: per (token, head).
     pub key_blocks: Vec<CompressedBlock>,
-    /// Value blocks unique to this agent (turbo-quant compressed).
+    /// Value blocks unique to this agent. Same semantics as `key_blocks`.
     pub value_blocks: Vec<CompressedBlock>,
     /// Blake3 digest of all blocks in this layer.
     pub block_digest: String,
 }
 
-/// A per-agent compressed context shell.
-///
-/// AgentShell stores turbo-quant compressed KV vectors for tokens that are
-/// unique to a specific agent. Shared tokens are referenced from the parent
-/// pool by digest, not duplicated.
-#[derive(Debug, Clone)]
-pub struct AgentShell {
-    /// Agent identifier.
-    pub agent_id: String,
-    /// Shell manifest.
-    pub shell_manifest: ShellManifest,
-    /// Per-layer unique token blocks (turbo-quant compressed).
-    pub unique_layers: Vec<ShellLayer>,
-    /// Reference to the parent pool digest.
-    pub pool_digest: String,
-}
-
 impl ShellLayer {
+    /// True when this layer's K and V are stored as single batched TQB1 blocks.
+    /// Recognizes both the lossless (`turbo_8bit_batched`) and lossy
+    /// (`turbo_8bit_batched_lossy`) variants — both are single-blob
+    /// batched storage; the difference is the radii codec inside the wire.
+    pub fn is_batched(&self) -> bool {
+        self.key_blocks.len() == 1
+            && self.value_blocks.len() == 1
+            && (is_batched_turbo(&self.key_blocks[0].codec)
+                || is_batched_turbo_lossy(&self.key_blocks[0].codec))
+    }
+
     /// Compute a content digest over the blocks in this layer.
     fn compute_digest(&self) -> Result<String> {
         let key_digests: Vec<&str> = self
@@ -58,6 +59,84 @@ impl ShellLayer {
         let json = serde_json::to_string(&payload)
             .map_err(|e| ProveKvError::Internal(format!("shell layer digest: {}", e)))?;
         Ok(blake3::hash(json.as_bytes()).to_hex().to_string())
+    }
+}
+
+/// A per-agent compressed context shell.
+///
+/// AgentShell stores turbo-quant compressed KV vectors for tokens that are
+/// unique to a specific agent. Shared tokens are referenced from the parent
+/// pool by digest, not duplicated.
+#[derive(Debug, Clone)]
+pub struct AgentShell {
+    /// Agent identifier.
+    pub agent_id: String,
+    /// Shell manifest.
+    pub shell_manifest: ShellManifest,
+    /// Per-layer unique token blocks (turbo-quant compressed).
+    pub unique_layers: Vec<ShellLayer>,
+    /// Reference to the parent pool digest.
+    pub pool_digest: String,
+}
+
+impl AgentShell {
+    /// Decompress every layer in this shell and return the full K and V
+    /// tensors in HuggingFace-friendly layout. The output per layer is
+    /// `(K_flat, V_flat)` with shape `[num_unique_tokens * num_kv_heads * head_dim]`,
+    /// laid out as `[t0_h0_d0.., t0_h1_d0.., ..., t1_h0_d0.., ...]`.
+    pub fn decompress_all_layers_with_seed(
+        &self,
+        seed: u64,
+    ) -> Result<Vec<(Vec<f32>, Vec<f32>)>> {
+        let head_dim = self.shell_manifest.head_dim;
+        let num_kv_heads = self.shell_manifest.num_kv_heads as usize;
+        let num_unique_tokens = self.shell_manifest.num_unique_tokens as usize;
+
+        let turbo = TurboQuantAdapter::with_radii_compression(
+            head_dim,
+            self.shell_manifest.turbo_config.bits,
+            self.shell_manifest.turbo_config.projections,
+            self.shell_manifest.turbo_config.radii_compression,
+        )?;
+
+        // Re-layout a per-head flattened K/V (shape
+        // `[num_kv_heads][num_tokens * head_dim]`) into a single flat buffer
+        // of shape `[num_tokens, num_kv_heads, head_dim]` (so that the
+        // Python bench's `.reshape(1, num_tokens, num_kv_heads, head_dim)
+        // .transpose(1, 2)` yields `[1, num_kv_heads, num_tokens, head_dim]`).
+        let mut flatten =
+            |per_head: &[Vec<f32>]| -> Vec<f32> {
+                let mut out = Vec::with_capacity(num_unique_tokens * num_kv_heads * head_dim);
+                for t in 0..num_unique_tokens {
+                    for h in 0..num_kv_heads {
+                        let base = t * head_dim;
+                        out.extend_from_slice(&per_head[h][base..base + head_dim]);
+                    }
+                }
+                out
+            };
+
+        let mut out = Vec::with_capacity(self.unique_layers.len());
+        for layer in &self.unique_layers {
+            let k_decoded: Vec<Vec<f32>> =
+                turbo.decode_batch_compact(&layer.key_blocks[0].encoded_payload, seed)?;
+            let v_decoded: Vec<Vec<f32>> =
+                turbo.decode_batch_compact(&layer.value_blocks[0].encoded_payload, seed)?;
+
+            let mut k_per_head: Vec<Vec<f32>> =
+                vec![Vec::with_capacity(num_unique_tokens * head_dim); num_kv_heads];
+            let mut v_per_head: Vec<Vec<f32>> =
+                vec![Vec::with_capacity(num_unique_tokens * head_dim); num_kv_heads];
+            for t in 0..num_unique_tokens {
+                for h in 0..num_kv_heads {
+                    let idx = t * num_kv_heads + h;
+                    k_per_head[h].extend_from_slice(&k_decoded[idx]);
+                    v_per_head[h].extend_from_slice(&v_decoded[idx]);
+                }
+            }
+            out.push((flatten(&k_per_head), flatten(&v_per_head)));
+        }
+        Ok(out)
     }
 }
 
@@ -88,6 +167,9 @@ pub fn materialize_shell(
             0,
             seed,
             now_unix(),
+            pool.manifest.shape.head_dim,
+            pool.manifest.shape.num_kv_heads,
+            pool.manifest.policy.turbo_config.clone(),
         )?;
 
         let receipt = ShellMaterializeReceipt::new(
@@ -115,12 +197,20 @@ pub fn materialize_shell(
     let num_kv_heads = pool.manifest.shape.num_kv_heads as usize;
     let head_dim = pool.manifest.shape.head_dim;
 
-    // Create the turbo-quant codec
-    let shell_codec = create_codec(
-        CODEC_TURBO_8BIT,
+    // Create the turbo-quant codec. We hold the concrete adapter so we can
+    // call `encode_batch_compact` and produce a single TQB1 batched payload
+    // per (layer, K/V) — much smaller on disk than one block per (token, head).
+    // Build the turbo-quant codec. The radii compression policy controls
+    // whether the wire format stores raw f32 radii (lossless, default) or
+    // BlockLogU8 (lossy, opt-in for the 58.14x system number). The decoder
+    // reads the radii_codec flag from the wire and applies the inverse, so
+    // a lossless shell and a lossy shell with the same dim/projections are
+    // both decodable from the same decoder.
+    let turbo_adapter = TurboQuantAdapter::with_radii_compression(
         head_dim,
-        None,
-        Some(&pool.policy.turbo_config),
+        pool.policy.turbo_config.bits,
+        pool.policy.turbo_config.projections,
+        pool.policy.turbo_config.radii_compression,
     )?;
 
     // Validate agent token shapes
@@ -145,41 +235,49 @@ pub fn materialize_shell(
     let num_unique_tokens = agent_tokens.len() as u32;
 
     for layer_idx in 0..num_layers {
-        let mut key_blocks: Vec<CompressedBlock> =
+        // Collect every (token, head) K and V vector for this layer up
+        // front, then dispatch two batched encodes (one for K, one for V).
+        // The TQB1 batched path produces a single bytes blob per side
+        // holding the whole layer's worth of turbo codes, instead of one
+        // block per (token, head). 1.34x smaller on disk.
+        let mut key_inputs: Vec<Vec<f32>> =
             Vec::with_capacity(num_unique_tokens as usize * num_kv_heads);
-        let mut value_blocks: Vec<CompressedBlock> =
+        let mut value_inputs: Vec<Vec<f32>> =
             Vec::with_capacity(num_unique_tokens as usize * num_kv_heads);
-
         for (_token_id, vec) in agent_tokens.iter() {
             for head_idx in 0..num_kv_heads {
-                let base_offset = layer_idx * num_kv_heads * head_dim * 2 + head_idx * head_dim * 2;
-
-                let key_start = base_offset;
-                let key_end = key_start + head_dim;
-                let key: Vec<f32> = vec[key_start..key_end].to_vec();
-
-                let value_start = key_end;
-                let value_end = value_start + head_dim;
-                let value: Vec<f32> = vec[value_start..value_end].to_vec();
-
-                let encoded_key = shell_codec.encode(&key, seed)?;
-                let encoded_value = shell_codec.encode(&value, seed)?;
-
-                key_blocks.push(CompressedBlock::new(
-                    shell_codec.codec_id(),
-                    encoded_key,
-                    head_dim,
-                ));
-                value_blocks.push(CompressedBlock::new(
-                    shell_codec.codec_id(),
-                    encoded_value,
-                    head_dim,
-                ));
-
-                total_shell_bytes += key_blocks.last().unwrap().compressed_bytes as u64;
-                total_shell_bytes += value_blocks.last().unwrap().compressed_bytes as u64;
+                let base_offset =
+                    layer_idx * num_kv_heads * head_dim * 2 + head_idx * head_dim * 2;
+                let key_end = base_offset + head_dim;
+                let value_end = key_end + head_dim;
+                key_inputs.push(vec[base_offset..key_end].to_vec());
+                value_inputs.push(vec[key_end..value_end].to_vec());
             }
         }
+        let key_refs: Vec<&[f32]> = key_inputs.iter().map(|v| v.as_slice()).collect();
+        let value_refs: Vec<&[f32]> = value_inputs.iter().map(|v| v.as_slice()).collect();
+
+        let encoded_keys = turbo_adapter.encode_batch_compact(&key_refs, seed)?;
+        let encoded_values = turbo_adapter.encode_batch_compact(&value_refs, seed)?;
+
+        // Pick the codec id for this shell based on the policy's
+        // radii_compression flag. Both ids share the same on-disk
+        // structure (one batched block per K/V per layer); the difference
+        // is in how radii are encoded INSIDE the block. The decoder
+        // dispatches on the id and reads the wire's radii_codec byte.
+        let shell_codec_id = match pool.policy.turbo_config.radii_compression {
+            crate::policy::RadiiCompression::Lossless => CODEC_TURBO_8BIT_BATCHED,
+            crate::policy::RadiiCompression::Lossy => CODEC_TURBO_8BIT_BATCHED_LOSSY,
+        };
+        let key_block = CompressedBlock::new(shell_codec_id.to_string(), encoded_keys, head_dim);
+        let value_block =
+            CompressedBlock::new(shell_codec_id.to_string(), encoded_values, head_dim);
+
+        total_shell_bytes += key_block.compressed_bytes as u64;
+        total_shell_bytes += value_block.compressed_bytes as u64;
+
+        let key_blocks = vec![key_block];
+        let value_blocks = vec![value_block];
 
         let mut layer = ShellLayer {
             layer_index: layer_idx as u32,
@@ -220,6 +318,9 @@ pub fn materialize_shell(
         total_shell_bytes,
         seed,
         materialized_at_unix,
+        pool.manifest.shape.head_dim,
+        pool.manifest.shape.num_kv_heads,
+        pool.manifest.policy.turbo_config.clone(),
     )?;
 
     let receipt = ShellMaterializeReceipt::new(

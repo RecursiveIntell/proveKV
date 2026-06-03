@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::policy::{CodecId, CompressionPolicy};
+use crate::policy::{CodecId, CompressionPolicy, TurboConfig};
 use crate::shape::KvTensorShape;
 
 /// Schema version for PoolManifest.
@@ -55,6 +55,11 @@ impl PoolManifest {
             0.0
         };
 
+        let shared_codec = if policy.shared_codec.is_empty() {
+            crate::policy::CODEC_FIB_K4_N32.into()
+        } else {
+            policy.shared_codec.clone()
+        };
         let manifest = Self {
             schema_version: POOL_MANIFEST_SCHEMA.into(),
             pool_id,
@@ -63,7 +68,7 @@ impl PoolManifest {
             num_shared_tokens,
             num_layers,
             pool_size_bytes,
-            shared_codec: CODEC_IDENTIFIER_SHARED.into(),
+            shared_codec,
             compression_ratio,
             built_at_unix,
             build_seed,
@@ -118,10 +123,17 @@ pub struct ShellManifest {
     pub materialized_at_unix: i64,
     /// Seed used during materialization.
     pub materialize_seed: u64,
+    /// Head dimension of the model (needed for decompression).
+    pub head_dim: usize,
+    /// Number of KV heads in the model.
+    pub num_kv_heads: u32,
+    /// TurboQuant configuration used for this shell.
+    pub turbo_config: TurboConfig,
 }
 
 impl ShellManifest {
     /// Create and validate a shell manifest.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         agent_id: String,
         pool_digest: String,
@@ -130,6 +142,9 @@ impl ShellManifest {
         shell_size_bytes: u64,
         materialize_seed: u64,
         materialized_at_unix: i64,
+        head_dim: usize,
+        num_kv_heads: u32,
+        turbo_config: TurboConfig,
     ) -> crate::error::Result<Self> {
         let manifest = Self {
             schema_version: SHELL_MANIFEST_SCHEMA.into(),
@@ -141,6 +156,9 @@ impl ShellManifest {
             shell_codec: CODEC_IDENTIFIER_SHELL.into(),
             materialized_at_unix,
             materialize_seed,
+            head_dim,
+            num_kv_heads,
+            turbo_config,
         };
         manifest.validate()?;
         Ok(manifest)
