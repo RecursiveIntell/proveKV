@@ -171,6 +171,12 @@ def make_architecture():
     ax.legend(handles=leg_items, loc="lower left", bbox_to_anchor=(0.0, -0.02),
               frameon=False, ncol=2, fontsize=9, handlelength=2.0)
 
+    # Footer note: explain the 37.31x naive definition
+    fig.text(0.5, 0.02,
+             "37.31x is the PPL-validated SmolLM2-1.7B N=8 system ratio (vs. 2.48 GB naive per the receipt). "
+             "Geometric 922 KB + 8*191 KB / 173 MB gives ~72x; receipts use a different (larger) naive baseline.",
+             ha="center", va="bottom", fontsize=7.5, color=C_MUTED, style="italic")
+
     fig.tight_layout()
     fig.savefig(OUT / "architecture.svg", format="svg", bbox_inches="tight")
     plt.close(fig)
@@ -244,13 +250,15 @@ def make_n_scaling():
         # is identical on every bar.
         is_headline = (i == len(lossless_mb) - 1)
         rs = 13 if is_headline else 10
+        # Add a "1" superscript to the N=8 ratios to tie to the (1) footnote
+        ratio_suffix = "¹" if is_headline else ""
         ax_pk.text(i - width/2 - 0.04, 5.30, f"{lb:.2f} MB",
                    ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
-        ax_pk.text(i - width/2 - 0.04, 4.90, f"{f_lossless[i]:.1f}x",
+        ax_pk.text(i - width/2 - 0.04, 4.90, f"{f_lossless[i]:.1f}x{ratio_suffix}",
                    ha="center", fontsize=rs, color=C_FIB, fontweight="bold")
         ax_pk.text(i + width/2 + 0.04, 5.30, f"{ly:.2f} MB",
                    ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
-        ax_pk.text(i + width/2 + 0.04, 4.90, f"{f_lossy[i]:.1f}x",
+        ax_pk.text(i + width/2 + 0.04, 4.90, f"{f_lossy[i]:.1f}x{ratio_suffix}",
                    ha="center", fontsize=10, color=C_LOSSY, fontweight="bold")
     # PPL-validated callout for N=8. Mark the N=8 bar pair with a small
     # "(1)" superscript that ties to a footnote in the suptitle. No in-panel
@@ -274,11 +282,10 @@ def make_n_scaling():
     # so the unit (MB) is explicit on both panels.
     ax_pk.set_ylabel("Total system memory (MB)")
 
-    fig.suptitle("Multi-agent memory scaling at 1024 tokens, 80% shared prefix\n"
-                 "(1) N=8 also PPL-validated on SmolLM2-1.7B + WikiText-2: "
-                 "37.31× lossless / 65.88× lossy, ΔPPL = 0.00% (bit-exact)\n"
-                 "N=2..6 are Qwen2.5-0.5B size-only with ΔPPL = 0.00% in every PPL run",
-                 fontsize=10.5, fontweight="bold", y=1.04)
+    fig.suptitle("Multi-agent memory scaling at 1024 tokens, 80% shared prefix  ·  Qwen2.5-0.5B baseline (N=2..6)\n"
+                 "(1) N=8 has a SECOND measurement on SmolLM2-1.7B + WikiText-2: 37.31× lossless / 65.88× lossy, ΔPPL = 0.00%\n"
+                 "Bar ratios are vs. the Qwen0.5B 173 MB naive shown left; the (1) numbers are vs. the SmolLM2 2.48 GB naive in the receipt",
+                 fontsize=10, fontweight="bold", y=1.02)
     fig.tight_layout()
     fig.savefig(OUT / "n_scaling.svg", format="svg", bbox_inches="tight")
     plt.close(fig)
@@ -320,16 +327,19 @@ def make_cross_validation():
         # regardless of bar height; we extend the ylim to give short bars
         # room to display their stack in the chart's headroom.
         bar_top = m
-        # Line 1 (top): compression ratio in a neutral tone (not the
-        # bar's color, so it doesn't blend with the fill).
+        # Three-line stack with explicit constant pitch so the lines
+        # never collide regardless of bar height. Pitches chosen to
+        # accommodate the descenders of the larger "X.X MB" font and
+        # the ascenders of the "dPPL" line without overlap.
+        # Line 1 (top): compression ratio
         ratio_x = mb_per_row_ratio_x[i]
-        ax.text(i, bar_top + 3.5, f"{ratio_x:.2f}× lossless",
+        # Three lines with vertical gaps large enough that the
+        # descenders of one line never touch the ascenders of the
+        # next, even at the rendered scale.
+        ax.text(i, bar_top + 4.5, f"{ratio_x:.2f}× lossless",
                 ha="center", va="bottom", fontsize=9, color=C_MUTED, fontweight="bold")
-        # Line 2 (middle): MB value (the headline number)
-        ax.text(i, bar_top + 2.0, f"{m:.1f} MB", ha="center",
+        ax.text(i, bar_top + 2.7, f"{m:.1f} MB", ha="center", va="bottom",
                 fontsize=11, fontweight="bold", color=C_TEXT)
-        # Line 3 (bottom, just above the bar): PPL delta, color-coded
-        # Shorter PPL text to fit in the bar width
         if d == 0:
             ppl_text = "ΔPPL = 0.00%"
         else:
@@ -348,7 +358,7 @@ def make_cross_validation():
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     # ylim must accommodate 45.2 MB bar + ~2-line text above it
-    ax.set_ylim(0, max(mb) * 1.40)
+    ax.set_ylim(0, max(mb) + 8.5)
     ax.legend(handles=[
         mpatches.Patch(facecolor=C_FIB, label="ΔPPL = 0.00% (bit-exact vs oracle)"),
         mpatches.Patch(facecolor=C_LOSSY, label="ΔPPL < 0% (roundtrip cleaner than noisy oracle)"),
@@ -408,8 +418,10 @@ def make_wire_story():
     # math unchanged). TQB1-L is shown here for completeness, but it's a
     # codec-math change (BlockLogU8 quantization of the radii), not a
     # wire-format change. The title scopes to the lossless path.
-    ax.set_title("Per-block wire size: 472 B → 40 B  ·  3.5× lossless, 11.8× with lossy codec",
-                 fontsize=11.5, pad=10)
+    ax.set_title(
+        "Per-block wire size: 472 B (JSON) → 40 B (TQB1-L)  ·  3.5× lossless, 11.8× with lossy codec\n"
+        "TQW1 = turbo wire v1, TQB1 = turbo batched v1, TQB1-L = TQB1 with lossy BlockLogU8 radii",
+        fontsize=9.5, pad=10)
     ax.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0, which="both")
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)
