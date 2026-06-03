@@ -101,6 +101,20 @@ impl Rotation for RotationBackend {
     }
 }
 
+impl RotationBackend {
+    /// Apply the inverse rotation to a batch of `dim`-sized slices in one
+    /// call. For `FastHadamard` this is the same per-vector math as
+    /// `apply_inverse` but amortized across the whole batch. For
+    /// `StoredQr` the d×d matrix is converted to a row-major `Vec<f32>`
+    /// once and reused across the batch.
+    pub fn apply_inverse_batch(&self, inputs: &[&[f32]]) -> Result<Vec<Vec<f32>>> {
+        match self {
+            Self::FastHadamard(rotation) => rotation.apply_inverse_batch(inputs),
+            Self::StoredQr(rotation) => rotation.apply_inverse_batch(inputs),
+        }
+    }
+}
+
 /// A rotation that can be applied to and inverted on vectors of a fixed dimension.
 pub trait Rotation: Send + Sync {
     /// The dimension this rotation operates on.
@@ -144,6 +158,39 @@ impl FastHadamardRotation {
 
     pub fn seed(&self) -> u64 {
         self.seed
+    }
+
+    /// Apply the inverse rotation to a batch of `dim`-sized slices in one
+    /// call. For each input slice: copy it into a freshly-allocated
+    /// `dim`-sized output, run the normalized FWHT, then multiply by the
+    /// sign vector. This is bit-exact identical to calling
+    /// `apply_inverse` N times in a loop; the win is amortizing the
+    /// per-call branch/lookup overhead and keeping `scale`, the
+    /// butterfly indices, and the `signs` table hot in cache.
+    pub fn apply_inverse_batch(&self, inputs: &[&[f32]]) -> Result<Vec<Vec<f32>>> {
+        if inputs.is_empty() {
+            return Ok(Vec::new());
+        }
+        let dim = self.dim;
+        let signs = &self.signs;
+        let mut outputs: Vec<Vec<f32>> = Vec::with_capacity(inputs.len());
+        for input in inputs {
+            if input.len() != dim {
+                return Err(TurboQuantError::DimensionMismatch {
+                    expected: dim,
+                    got: input.len(),
+                });
+            }
+            let mut out = vec![0.0f32; dim];
+            // Match `apply_inverse` byte-for-byte: copy, fwht, sign-flip.
+            out.copy_from_slice(input);
+            fwht_normalized(&mut out);
+            for (out_val, sign) in out.iter_mut().zip(signs.iter()) {
+                *out_val *= *sign;
+            }
+            outputs.push(out);
+        }
+        Ok(outputs)
     }
 }
 
@@ -251,6 +298,40 @@ impl Rotation for StoredRotation {
                 .sum();
         }
         Ok(())
+    }
+}
+
+impl StoredRotation {
+    /// Apply the inverse rotation to a batch of `dim`-sized slices in one
+    /// call. The d×d matrix is already in memory; this is the same
+    /// per-vector work as `apply_inverse` repeated N times. The win is
+    /// just the loop / branch amortization on a tight inner loop.
+    pub fn apply_inverse_batch(&self, inputs: &[&[f32]]) -> Result<Vec<Vec<f32>>> {
+        if inputs.is_empty() {
+            return Ok(Vec::new());
+        }
+        let dim = self.dim;
+        let mut outputs: Vec<Vec<f32>> = Vec::with_capacity(inputs.len());
+        for input in inputs {
+            if input.len() != dim {
+                return Err(TurboQuantError::DimensionMismatch {
+                    expected: dim,
+                    got: input.len(),
+                });
+            }
+            let mut out = vec![0.0f32; dim];
+            for i in 0..dim {
+                out[i] = self
+                    .matrix
+                    .column(i)
+                    .iter()
+                    .zip(input.iter())
+                    .map(|(r, y)| r * y)
+                    .sum();
+            }
+            outputs.push(out);
+        }
+        Ok(outputs)
     }
 }
 

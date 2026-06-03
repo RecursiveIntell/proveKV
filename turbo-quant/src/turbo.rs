@@ -406,6 +406,19 @@ impl TurboQuantizer {
         self.polar.decode(&code.polar_code)
     }
 
+    /// Decode a batch of TurboCodes to approximate reconstructions in one
+    /// call. Bit-exact identical to `decode_approximate` for each code
+    /// in turn; the win is amortizing the per-call branch / lookup
+    /// overhead and keeping the rotation's signs (or matrix) hot in
+    /// cache across the whole batch.
+    pub fn decode_approximate_batch(&self, codes: &[TurboCode]) -> Result<Vec<Vec<f32>>> {
+        for code in codes {
+            code.validate_for(self.dim, self.bits, self.projections, self.mode)?;
+        }
+        let polar_refs: Vec<PolarCode> = codes.iter().map(|c| c.polar_code.clone()).collect();
+        self.polar.decode_batch(&polar_refs)
+    }
+
     /// Encode a vector into deterministic TurboQuant wire bytes.
     pub fn encode_to_bytes(&self, vector: &[f32]) -> Result<Vec<u8>> {
         let code = self.encode(vector)?;

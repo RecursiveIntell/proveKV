@@ -271,20 +271,48 @@ impl PolarQuantizer {
     /// then inverse-rotated back. Reconstruction error depends on `bits`.
     pub fn decode(&self, code: &PolarCode) -> Result<Vec<f32>> {
         self.validate_code(code)?;
+        let rotated = self.decode_to_rotated(code)?;
+        let mut output = vec![0.0f32; self.dim];
+        self.rotation.apply_inverse(&rotated, &mut output)?;
+        Ok(output)
+    }
 
+    /// Decode a batch of [`PolarCode`]s back to vectors in one call.
+    ///
+    /// Bit-exact identical to `decode` for each code in turn; the win is
+    /// amortizing the per-call branch / lookup overhead and keeping the
+    /// sign table (or matrix) hot in cache across the whole batch.
+    /// Returns one `Vec<f32>` per input code, in the same order.
+    pub fn decode_batch(&self, codes: &[PolarCode]) -> Result<Vec<Vec<f32>>> {
+        if codes.is_empty() {
+            return Ok(Vec::new());
+        }
+        // Phase 1: validate and dequantize every code's polar pairs into
+        // a flat (cos, sin)-rotated buffer. Allocations are pre-sized.
+        let mut rotated: Vec<Vec<f32>> = Vec::with_capacity(codes.len());
+        for code in codes {
+            self.validate_code(code)?;
+            rotated.push(self.decode_to_rotated(code)?);
+        }
+        // Phase 2: apply inverse rotation to the whole batch at once.
+        let rotated_refs: Vec<&[f32]> = rotated.iter().map(|v| v.as_slice()).collect();
+        self.rotation.apply_inverse_batch(&rotated_refs)
+    }
+
+    /// Decode a single [`PolarCode`] into its rotated-space representation
+    /// (the (r·cosθ, r·sinθ) pairs) without applying the inverse rotation.
+    /// Shared by `decode` and `decode_batch` to keep the angle math in
+    /// one place.
+    fn decode_to_rotated(&self, code: &PolarCode) -> Result<Vec<f32>> {
         let mut rotated = vec![0.0f32; self.dim];
         let pairs = self.dim / 2;
-
         for i in 0..pairs {
             let theta = code.dequantize_angle(i)?;
             let r = code.radii[i];
             rotated[2 * i] = r * theta.cos();
             rotated[2 * i + 1] = r * theta.sin();
         }
-
-        let mut output = vec![0.0f32; self.dim];
-        self.rotation.apply_inverse(&rotated, &mut output)?;
-        Ok(output)
+        Ok(rotated)
     }
 
     /// Estimate the inner product ⟨query, encoded_vector⟩ without decoding.
@@ -423,6 +451,47 @@ mod tests {
                 (orig - dec).abs() < 0.01,
                 "orig={orig:.4}, decoded={dec:.4}"
             );
+        }
+    }
+
+    #[test]
+    fn decode_batch_is_bit_exact_with_per_vec() {
+        // Bit-exactness guard for the batch-decode fast path. The batch
+        // and per-vec paths must produce the same float output for the
+        // same input, because the whole point of the batch path is to
+        // be a drop-in replacement that only differs in constant factor
+        // (branch / lookup amortization).
+        for bits in [4u8, 8, 12] {
+            for seed in [0u64, 1, 42, 1337] {
+                let q = PolarQuantizer::new(64, bits, seed).unwrap();
+                let mut vecs: Vec<Vec<f32>> = Vec::new();
+                for i in 0..32 {
+                    let v: Vec<f32> = (0..64)
+                        .map(|j| ((i * 64 + j) as f32 * 0.137 + seed as f32 * 0.011).sin())
+                        .collect();
+                    vecs.push(v);
+                }
+                let codes: Vec<PolarCode> =
+                    vecs.iter().map(|v| q.encode(v).unwrap()).collect();
+                // Per-vec baseline.
+                let mut per_vec: Vec<Vec<f32>> = Vec::new();
+                for c in &codes {
+                    per_vec.push(q.decode(c).unwrap());
+                }
+                // Batch path.
+                let batched = q.decode_batch(&codes).unwrap();
+                assert_eq!(batched.len(), per_vec.len());
+                for (i, (a, b)) in per_vec.iter().zip(batched.iter()).enumerate() {
+                    assert_eq!(a.len(), b.len(), "vec {i} length mismatch");
+                    for (j, (x, y)) in a.iter().zip(b.iter()).enumerate() {
+                        assert_eq!(
+                            x.to_bits(),
+                            y.to_bits(),
+                            "vec {i} coord {j}: per_vec={x} batch={y} (bits={bits}, seed={seed})"
+                        );
+                    }
+                }
+            }
         }
     }
 
