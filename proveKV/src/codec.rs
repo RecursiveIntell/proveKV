@@ -208,17 +208,50 @@ impl KVecCodec for TurboQuantAdapter {
             crate::error::ProveKvError::CompressionFailed(format!("turbo encode failed: {}", e))
         })?;
 
-        // Serialize TurboCode to JSON then to bytes
-        serde_json::to_vec(&code).map_err(crate::error::ProveKvError::Serialization)
+        // Use the compact binary wire format from turbo-quant's TurboCodeWireV1
+        // (TQW1 magic, 46-byte header + packed polar/QJL data). The JSON envelope
+        // was 472 bytes/block around 26 bytes of codec data; the compact format
+        // is ~206 bytes/block for b=8 / head_dim=64 / 32 projections — 2.3x
+        // smaller per block, 2.4x system-level memory reduction on multi-agent
+        // benchmarks. See results/bench/multi_agent_compact/.
+        turbo_quant::TurboCodeWireV1::encode(&code, &quantizer).map_err(|e| {
+            crate::error::ProveKvError::CompressionFailed(format!("turbo wire encode failed: {}", e))
+        })
     }
 
     fn decode(&self, payload: &[u8], seed: u64) -> Result<Vec<f32>> {
-        let code: turbo_quant::TurboCode = serde_json::from_slice(payload).map_err(|e| {
-            crate::error::ProveKvError::DecompressionFailed(format!(
-                "turbo code deserialize failed: {}",
-                e
-            ))
-        })?;
+        // Compact binary format is preferred (header starts with TURBO_CODE_WIRE_MAGIC
+        // = "TQW1", 4 bytes), but fall back to JSON for backward compat with shells
+        // written by older proveKV versions.
+        let code: turbo_quant::TurboCode = if payload.len() >= 4
+            && &payload[0..4] == turbo_quant::TURBO_CODE_WIRE_MAGIC
+        {
+            let quantizer = turbo_quant::TurboQuantizer::new(
+                self.dim,
+                self.bits,
+                self.projections,
+                seed,
+            )
+            .map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "turbo quantizer init failed: {}",
+                    e
+                ))
+            })?;
+            turbo_quant::TurboCodeWireV1::decode(payload, &quantizer).map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "turbo wire decode failed: {}",
+                    e
+                ))
+            })?
+        } else {
+            serde_json::from_slice(payload).map_err(|e| {
+                crate::error::ProveKvError::DecompressionFailed(format!(
+                    "turbo code deserialize failed: {}",
+                    e
+                ))
+            })?
+        };
 
         // Reconstruct from polar component via independent PolarQuantizer.
         // QJL residual is lossy and not invertible, so we return the polar

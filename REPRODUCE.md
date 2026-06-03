@@ -170,6 +170,56 @@ for sf in 0.5 0.95; do
 done
 ```
 
+## Reproduce the compact hot-tier sweep
+
+The compact hot-tier sweep uses the same
+`prove_kv_multi_agent_shell` Rust example after the turbo
+wire format fix. The CLI args and methodology are unchanged
+from the multi-agent sweep above; only the storage format
+differs (TQW1 compact binary instead of JSON envelope).
+
+**One-time prerequisite:** ensure the proveKV crate is built
+with the `turbo` feature (it is by default in this repo's
+`proveKV/Cargo.toml`). The vendored `turbo-quant` crate
+provides the `TurboCodeWireV1` encode/decode.
+
+```bash
+# Build the multi-agent CLI (release, with turbo feature)
+cd proveKV
+cargo build --release --example prove_kv_multi_agent_shell
+cd ..
+```
+
+**Per-N run** (use Qwen0.5B which fits 8 agents on 7.91 GB):
+```bash
+# N=2
+out=results/bench/multi_agent_compact/qwen2.5-0.5b/n2-shared80-compact
+mkdir -p "$out"
+./proveKV/target/release/examples/prove_kv_multi_agent_shell \
+  results/bench/ppl/qwen2.5-0.5b/wikitext-2/prove_kv_corpus.json \
+  "$out" \
+  --n-agents 2 --shared-frac 0.8 --seed 42
+
+python3 proveKV/scripts/ppl_multi_agent.py \
+  --model Qwen/Qwen2.5-0.5B-Instruct \
+  --model-slug qwen2.5-0.5b \
+  --corpus wikitext-2 \
+  --n-tokens 1024 \
+  --shared-frac 0.8 \
+  --multi-agent-dir "$out" \
+  --output "$out/state.json"
+```
+
+Repeat with `--n-agents 3`, `4`, `6`, `8` to reproduce the full
+scaling sweep. The committed runs use `shared-frac 0.8` (80%
+shared). The expected results: 4.29× / 6.44× / 8.59× / 12.88× /
+17.17× memory reduction, all agents bit-exact lossless.
+
+The `compact_summary.json` (committed at
+`results/bench/multi_agent_compact/compact_summary.json`)
+rolls up the 7 state.jsons (5 N-scaling + 2 SmolLM2 tradeoff)
+into a single before/after table.
+
 ## Verify the build independently
 
 ```bash

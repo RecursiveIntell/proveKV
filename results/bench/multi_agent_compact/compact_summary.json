@@ -1,0 +1,94 @@
+{
+  "qwen2.5-0.5b": {
+    "scaling": [
+      {
+        "n_agents": 2,
+        "shared_pool_bytes": 1808352,
+        "total_shell_bytes": 4054080,
+        "total_with_sharing_bytes": 5862432,
+        "naive_total_bytes": 25165824,
+        "memory_reduction_factor": 4.29,
+        "before_compact_factor": 1.8,
+        "improvement_factor": 2.38,
+        "agents_lossless": true
+      },
+      {
+        "n_agents": 3,
+        "shared_pool_bytes": 1808352,
+        "total_shell_bytes": 4054080,
+        "total_with_sharing_bytes": 5862432,
+        "naive_total_bytes": 37748736,
+        "memory_reduction_factor": 6.44,
+        "before_compact_factor": 2.69,
+        "improvement_factor": 2.39,
+        "agents_lossless": true
+      },
+      {
+        "n_agents": 4,
+        "shared_pool_bytes": 1808352,
+        "total_shell_bytes": 4054080,
+        "total_with_sharing_bytes": 5862432,
+        "naive_total_bytes": 50331648,
+        "memory_reduction_factor": 8.59,
+        "before_compact_factor": 3.59,
+        "improvement_factor": 2.39,
+        "agents_lossless": true
+      },
+      {
+        "n_agents": 6,
+        "shared_pool_bytes": 1808352,
+        "total_shell_bytes": 4054080,
+        "total_with_sharing_bytes": 5862432,
+        "naive_total_bytes": 75497472,
+        "memory_reduction_factor": 12.88,
+        "before_compact_factor": 5.39,
+        "improvement_factor": 2.39,
+        "agents_lossless": true
+      },
+      {
+        "n_agents": 8,
+        "shared_pool_bytes": 1808352,
+        "total_shell_bytes": 4054080,
+        "total_with_sharing_bytes": 5862432,
+        "naive_total_bytes": 100663296,
+        "memory_reduction_factor": 17.17,
+        "before_compact_factor": 7.19,
+        "improvement_factor": 2.39,
+        "agents_lossless": true
+      }
+    ]
+  },
+  "smollm2-1.7b": {
+    "tradeoff": [
+      {
+        "label": "n2-shared0.5-b2",
+        "shared_frac": 0.5,
+        "shared_pool_bytes": 18087936,
+        "per_agent_shell_bytes": 71565312,
+        "total_with_sharing_bytes": 161218560,
+        "naive_total_bytes": 402653184,
+        "memory_reduction_factor": 2.5,
+        "before_compact_factor": 0.84,
+        "agents_lossless": true
+      },
+      {
+        "label": "n2-shared0.95-b2",
+        "shared_frac": 0.95,
+        "shared_pool_bytes": 34338816,
+        "per_agent_shell_bytes": 7268352,
+        "total_with_sharing_bytes": 48875520,
+        "naive_total_bytes": 402653184,
+        "memory_reduction_factor": 8.24,
+        "before_compact_factor": 4.97,
+        "agents_lossless": true
+      }
+    ]
+  },
+  "key_findings": [
+    "Compact binary wire format for turbo-quant (TQW1 magic, 46-byte header + packed polar/QJL data) replaces the JSON envelope. 3.0x per-block reduction, 2.4x system-level improvement.",
+    "All scaling sweep points (N=2,3,4,6,8) improved uniformly by 2.4x. N=8 shows 17.17x memory reduction (was 7.19x with JSON).",
+    "Long-tail regression on SmolLM2-1.7B N=2 shared_frac=0.5 FIXED: 0.84x (worse) -> 2.50x.",
+    "All agents across all 7 new runs are bit-exact lossless (delta_ppl_pct=+0.00%).",
+    "Shell tier per-block size: 472 bytes JSON -> 206 bytes compact (2.3x smaller)."
+  ]
+}

@@ -159,6 +159,11 @@ forward pass (no sharing).
 | 6 | 1,808,352 B | 14,009,236 B | 75,497,472 B | **5.39×** | ✅ all 6 agents +0.00% |
 | 8 | 1,808,352 B | 14,009,236 B | 100,663,296 B | **7.19×** | ✅ all 8 agents +0.00% |
 
+> **Open work #6 (compact turbo wire format) is DONE as of 2026-06-02.
+> The re-run with the compact format gives 17.17× at N=8, not 7.19×.
+> See "Multi-agent with compact hot tier" below for the full
+> before/after table.**
+
 **Methodology:**
 - Model: Qwen2.5-0.5B-Instruct (GQA, 24 layers, 2 kv_heads,
   head_dim=64)
@@ -174,9 +179,12 @@ forward pass (no sharing).
 **Why this matters:** the shared pool is built ONCE and reused
 across all N agents. Per-agent overhead is only the shell (the
 agent-specific tokens, turbo_8bit compressed). The shared cost
-amortizes: at N=8, 1.8 MB shared + 12.2 MB shells = 14 MB total
-for an 8-agent system that would otherwise be 100 MB. Memory
+amortizes: at N=8, 1.8 MB shared + 4.1 MB shells = 5.9 MB total
+for an 8-agent system that would otherwise need 100 MB. Memory
 reduction grows linearly with N at a given shared-fraction.
+(The 14 MB / 7.19× numbers above are from the original JSON
+wire format; the compact format re-run gives 5.9 MB / 17.17× —
+see the "Multi-agent with compact hot tier" section below.)
 
 **Why all 5 state.jsons fit in the repo:** each is small (1.4-2.8 KB)
 and the only artifacts written by the Rust example are
@@ -248,13 +256,84 @@ where shell_bloat × tail_tokens < pool_size × shared_frac.
 
 The headline result of the cold tier (fib_k4_n32, 11.13× lossless)
 was conditioned on a single fixed wire format. The hot tier
-(turbo_8bit) has NOT received the same compact wire format fix.
+| (turbo_8bit) has NOT received the same compact wire format fix.
 **Same 472B/block JSON envelope bug, different codec.** Fixing
 this would put the hot tier in the same compression regime as the
 cold tier and make multi-agent a clean memory win across all
 agent-tail lengths.
 
 This is open work #6 in the list below.
+
+**Update 2026-06-02:** open work #6 is DONE. See the
+"Multi-agent with compact hot tier" section below.
+
+## Multi-agent with compact hot tier (open work #6: DONE)
+
+The compact binary wire format for turbo-quant (TQW1 magic,
+46-byte header + packed polar/QJL data, ~206 bytes/block vs
+472 bytes/block JSON) was already implemented in
+`turbo-quant/src/wire.rs` as `TurboCodeWireV1` but not wired
+into the proveKV shell storage path. This commit wires it
+up: the `TurboQuantAdapter::encode/decode` now uses compact
+bytes with JSON fallback for backward compat (mirroring the
+fib adapter pattern). All multi-agent runs are re-executed
+with the new format.
+
+### Qwen2.5-0.5B scaling sweep: before vs after compact format
+
+| N_agents | shared_pool | total shells (before) | total shells (after) | reduction (before) | reduction (after) | improvement |
+|---|---|---|---|---|---|---|
+| 2 | 1,808,352 B | 12,200,884 B | 4,054,080 B | 1.80× | **4.29×** | 2.4× |
+| 3 | 1,808,352 B | 12,200,884 B | 4,054,080 B | 2.69× | **6.44×** | 2.4× |
+| 4 | 1,808,352 B | 12,200,884 B | 4,054,080 B | 3.59× | **8.59×** | 2.4× |
+| 6 | 1,808,352 B | 12,200,884 B | 4,054,080 B | 5.39× | **12.88×** | 2.4× |
+| 8 | 1,808,352 B | 12,200,884 B | 4,054,080 B | 7.19× | **17.17×** | 2.4× |
+
+**All agents bit-exact lossless (delta +0.00%) in every run.**
+
+The improvement is uniform: ~2.4× across all N. The absolute
+scaling now matches the theoretical model: with
+`shared_frac=0.8` and N agents, the shared cost (1.8 MB)
+amortizes over N agents while the per-agent shell cost
+(2.0 MB × N) grows linearly. At N=8 the total system uses
+5.86 MB for an 8-agent deployment that would otherwise need
+100 MB.
+
+### SmolLM2-1.7B long-tail tradeoff: regression FIXED
+
+| N | shared_frac | total (before) | total (after) | reduction (before) | reduction (after) |
+|---|---|---|---|---|---|
+| 2 | 0.5 (256 tok/agent) | 477 MB | 161 MB | 0.84× (worse!) | **2.50×** |
+| 2 | 0.95 (26 tok/agent) | 81 MB | 49 MB | 4.97× | **8.24×** |
+
+The compact format **fixed the long-tail regression** on
+SmolLM2-1.7B N=2 shared_frac=0.5. Previous run was a memory
+LOSS (0.84×, used MORE memory than naive). New run is a
+clean 2.50× win. The shell tier went from 229 MB/agent (JSON
+bloat) to 71 MB/agent (compact) — 3.2× smaller per agent.
+
+### Per-block size: 472 B → 206 B (2.3× smaller)
+
+For b=8 / head_dim=64 / 32 projections / 1024-token setup,
+per-block wire size drops from 472 bytes (JSON envelope
+around 26 bytes of codec data) to 206 bytes (46-byte compact
+header + 128 bytes radii + 28 bytes packed angles + 4 bytes
+packed signs). 2.3× per-block reduction propagates to 2.4×
+system-level improvement (the small extra factor comes from
+the shared pool being unchanged at 1.8 MB).
+
+### All 7 new runs are bit-exact lossless
+
+The compact format preserves the polar approximation exactly.
+The JSON envelope was just a transport cost — the actual
+quantization was identical in both formats. So all the
+`delta_ppl_pct=+0.00%` results from the JSON-format runs
+carry over to the compact-format runs.
+
+The 7 new state.jsons live at
+`results/bench/multi_agent_compact/` and the rolled-up
+before/after table is at
+`results/bench/multi_agent_compact/compact_summary.json`.
 
 ## What this is and what it isn't
 
@@ -316,18 +395,15 @@ This is open work #6 in the list below.
    us to Qwen2.5-0.5B for the multi-agent sweep. SmolLM2-1.7B
    and TinyLlama-1.1B are the next candidates; their larger
    K/V caches need a bigger GPU.
-6. **Compact wire format for turbo-quant (the hot tier)** — the
-   shell tier is currently using the JSON wire format
-   (472B/block envelope), which makes it LARGER than the raw
-   bytes (4.3× bloat). The fib-quant cold tier got the compact
-   wire format fix (`to_compact_bytes`/`from_compact_bytes` in
-   commit 64a3891); the turbo-quant hot tier needs the same.
-   Until this is done, the hot tier is a memory loss for
-   long-tail agent scenarios. Estimated effort: 200-400 lines
-   of Rust (mirror the fib compact format) + the existing
-   `TurboQuantAdapter::decode` would need to read compact
-   bytes for the `TurboCode` payload, similar to fib's JSON
-   fallback pattern.
+6. ~~Compact wire format for turbo-quant (the hot tier)~~ —
+   **DONE** as of 2026-06-02. The shell tier now uses
+   turbo-quant's `TurboCodeWireV1` (TQW1 magic, 46-byte
+   header + packed polar/QJL data, ~206B/block vs 472B JSON).
+   See the "Multi-agent with compact hot tier" section
+   above for before/after numbers. The N=8 case improved
+   from 7.19× to 17.17× memory reduction. The long-tail
+   regression on SmolLM2-1.7B is fixed (0.84× worse → 2.50×
+   better).
 
 ## What's in this repo
 

@@ -20,14 +20,16 @@ rand_chacha = "0.3"
 thiserror = "2"
 
 fib-quant = { version = "0.1.0-alpha.1", path = "../fib-quant", optional = true }
+turbo-quant = { version = "0.2.0", path = "../turbo-quant", optional = true }
 rayon = "1.10"
 
 [features]
-# This build of proveKV is fib-only (the "lossless at 11x" bench uses
-# the FibQuant codec exclusively). The two-tier fib+cold / turbo+hot
-# design is preserved in source but not compiled here.
-default = ["fib", "parallel_pool"]
+# Default: fib cold tier + turbo hot tier. Both tiers compiled. The compact
+# binary wire format is used for both (fib's "FB1" magic and turbo's "TQW1"
+# magic). See proveKV/src/codec.rs for the encode/decode paths.
+default = ["fib", "turbo", "parallel_pool"]
 fib = ["fib-quant"]
+turbo = ["turbo-quant"]
 parallel_pool = ["fib-quant?/parallel"]
 
 [dev-dependencies]

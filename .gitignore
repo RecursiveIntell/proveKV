@@ -3,6 +3,9 @@ results/bench/ppl/**/cache_oracle.pt
 results/bench/ppl/**/prove_kv_corpus.json
 results/bench/multi_agent/**/shared_kv.bin
 results/bench/multi_agent/**/agent_*_kv.bin
+results/bench/multi_agent_compact/**/shared_kv.bin
+results/bench/multi_agent_compact/**/agent_*_kv.bin
+turbo-quant/AGENTS.md
 target/
 Cargo.lock
 **/*.rs.bak
