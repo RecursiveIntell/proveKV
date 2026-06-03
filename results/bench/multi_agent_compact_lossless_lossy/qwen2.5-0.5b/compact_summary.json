@@ -1,0 +1,100 @@
+{
+  "qwen2.5-0.5b": {
+    "lossless": {
+      "scaling": [
+        {
+          "n_agents": 2,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 863808,
+          "total_with_sharing_bytes": 1808208,
+          "naive_total_bytes": 60383232,
+          "memory_reduction_factor": 33.39,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched",
+          "lossy": false
+        },
+        {
+          "n_agents": 4,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 1727616,
+          "total_with_sharing_bytes": 2672016,
+          "naive_total_bytes": 100638720,
+          "memory_reduction_factor": 37.66,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched",
+          "lossy": false
+        },
+        {
+          "n_agents": 6,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 2591424,
+          "total_with_sharing_bytes": 3535824,
+          "naive_total_bytes": 140894208,
+          "memory_reduction_factor": 39.85,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched",
+          "lossy": false
+        },
+        {
+          "n_agents": 8,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 3455232,
+          "total_with_sharing_bytes": 4399632,
+          "naive_total_bytes": 181149696,
+          "memory_reduction_factor": 41.17,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched",
+          "lossy": false
+        }
+      ]
+    },
+    "lossy": {
+      "scaling": [
+        {
+          "n_agents": 2,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 390720,
+          "total_with_sharing_bytes": 1335120,
+          "naive_total_bytes": 60383232,
+          "memory_reduction_factor": 45.23,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched_lossy",
+          "lossy": true
+        },
+        {
+          "n_agents": 4,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 781440,
+          "total_with_sharing_bytes": 1725840,
+          "naive_total_bytes": 100638720,
+          "memory_reduction_factor": 58.31,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched_lossy",
+          "lossy": true
+        },
+        {
+          "n_agents": 6,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 1172160,
+          "total_with_sharing_bytes": 2116560,
+          "naive_total_bytes": 140894208,
+          "memory_reduction_factor": 66.57,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched_lossy",
+          "lossy": true
+        },
+        {
+          "n_agents": 8,
+          "shared_pool_bytes": 944400,
+          "total_shell_bytes": 1562880,
+          "total_with_sharing_bytes": 2507280,
+          "naive_total_bytes": 181149696,
+          "memory_reduction_factor": 72.25,
+          "shared_codec": "fib_k4_n32_batched",
+          "shell_codec": "turbo_8bit_batched_lossy",
+          "lossy": true
+        }
+      ]
+    }
+  }
+}

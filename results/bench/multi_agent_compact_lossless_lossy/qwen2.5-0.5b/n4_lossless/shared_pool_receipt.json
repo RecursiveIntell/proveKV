@@ -1,0 +1,12 @@
+{
+  "pool_id": "31477ecca509d474d431027f254538a9360583846fe22af2d5378ec6328eab39",
+  "num_shared_tokens": 819,
+  "num_layers": 24,
+  "num_kv_heads": 2,
+  "head_dim": 64,
+  "shared_codec": "fib_k4_n32_batched",
+  "compression_ratio": 21.312731893265564,
+  "pool_size_bytes": 944400,
+  "build_seed": 42,
+  "built_at_unix": 1780510245
+}

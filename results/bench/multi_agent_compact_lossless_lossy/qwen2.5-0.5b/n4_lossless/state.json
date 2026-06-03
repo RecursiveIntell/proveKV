@@ -1,0 +1,13 @@
+{
+  "model": "Qwen2.5-0.5B (24 layers, 2 kv heads, head_dim 64)",
+  "n_agents": 4,
+  "shared_pool_bytes": 944400,
+  "total_shell_bytes": 1727616,
+  "total_with_sharing_bytes": 2672016,
+  "naive_total_bytes": 100638720,
+  "memory_reduction_factor": 37.66396608403542,
+  "shell_codec": "turbo_8bit_batched",
+  "shared_codec": "fib_k4_n32_batched",
+  "radii_compression": "Lossless",
+  "lossy": false
+}
