@@ -1,13 +1,13 @@
 [package]
 name = "fib-quant"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition = "2021"
 rust-version = "1.75"
 description = "Experimental Rust implementation of the FibQuant radial-angular vector quantization core"
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/RecursiveIntell/Libraries"
-homepage = "https://github.com/RecursiveIntell/Libraries"
+repository = "https://github.com/RecursiveIntill/proveKV"
+homepage = "https://github.com/RecursiveIntill/proveKV"
 documentation = "https://docs.rs/fib-quant"
 keywords = ["quantization", "vector", "kv-cache", "llm", "compression"]
 categories = ["compression", "science", "algorithms"]
@@ -53,7 +53,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 statrs = "0.17"
 thiserror = "2.0.18"
-gpu-backend = { version = "0.1.0-alpha.1", path = "../gpu-backend" }
+gpu-backend = "0.1.0-alpha.1"
 rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
