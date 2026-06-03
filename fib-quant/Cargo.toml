@@ -1,6 +1,6 @@
 [package]
 name = "fib-quant"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 edition = "2021"
 rust-version = "1.75"
 description = "Experimental Rust implementation of the FibQuant radial-angular vector quantization core"
