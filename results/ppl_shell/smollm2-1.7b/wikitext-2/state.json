@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0.0",
+  "model": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+  "corpus": "wikitext-2",
+  "n_tokens": 1024,
+  "n_shell_tokens": 224,
+  "ppl_frac": 0.3,
+  "seed": 42,
+  "started_at": "2026-06-03T14:22:00",
+  "phase0": {
+    "status": "complete",
+    "ppl": 4.760762087094494,
+    "ppl_window": [
+      716,
+      1023
+    ],
+    "cache_path": "/home/jstevenson/proveKV_bench/ppl/smollm2-1.7b/wikitext-2-lossless/cache_oracle.pt",
+    "cache_bytes": 201341281,
+    "model_config": {
+      "num_layers": 24,
+      "num_heads": 32,
+      "num_kv_heads": 32,
+      "head_dim": 64,
+      "hidden_size": 2048
+    },
+    "forward_seconds": 1.5461788177490234,
+    "completed_at": "2026-06-03T13:44:20.660088-05:00",
+    "n_tokens": 1024,
+    "n_shell_tokens": 224
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_heads": 32,
+    "num_kv_heads": 32,
+    "head_dim": 64,
+    "hidden_size": 2048
+  },
+  "phase1_lossless": {
+    "ppl": 4.760762087094494,
+    "ppl_window": [
+      716,
+      1023
+    ],
+    "compression_ratio": null,
+    "shell_size_bytes": null,
+    "roundtrip_seconds": 44.65753936767578,
+    "forward_seconds": 1.6079537868499756,
+    "status": "complete",
+    "completed_at": "2026-06-03T14:36:53.481707-05:00"
+  },
+  "completed_at": "2026-06-03T14:38:03.809097-05:00",
+  "phase1_lossy": {
+    "ppl": 4.760762087094494,
+    "ppl_window": [
+      716,
+      1023
+    ],
+    "compression_ratio": null,
+    "shell_size_bytes": null,
+    "roundtrip_seconds": 44.56993770599365,
+    "forward_seconds": 1.5157852172851562,
+    "status": "complete",
+    "completed_at": "2026-06-03T14:38:03.805468-05:00"
+  }
+}

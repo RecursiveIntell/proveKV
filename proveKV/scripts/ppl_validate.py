@@ -274,13 +274,16 @@ def phase1_compressed(args, state: dict) -> None:
     roundtrip_bin = args.output.parent / "roundtrip.bin"
     if roundtrip_bin.exists():
         roundtrip_bin.unlink()
-    cli = args.prove_kv_cli
+    cli = args.proveKV_cli
     if not Path(cli).exists():
         raise FileNotFoundError(f"prove_kv CLI not found: {cli}")
     print(f"[phase1] running {cli} on corpus", flush=True)
     t0 = time.time()
+    cli_args = [cli, str(corpus_path), str(roundtrip_bin)]
+    if args.lossy:
+        cli_args.append("--lossy")
     proc = subprocess.run(
-        [cli, str(corpus_path), str(roundtrip_bin)],
+        cli_args,
         check=False, capture_output=True, text=True, timeout=args.phase1_timeout,
     )
     rt_s = time.time() - t0
@@ -616,6 +619,9 @@ def main() -> int:
     p.add_argument("--output", type=Path, required=True,
                    help="state.json path (other artifacts sit next to it)")
     p.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
+    p.add_argument("--lossy", action="store_true",
+                   help="Use TQB1-L (BlockLogU8 radii) instead of TQB1 (f32 radii). "
+                        "Lossy: smaller, but introduces ~1.8% relative error per radius.")
     p.add_argument(
         "--proveKV-cli", type=Path,
         default=Path(

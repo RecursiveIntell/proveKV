@@ -1,0 +1,16 @@
+{
+  "pool_id": "ae9b9144054d0b619924769f5c7bfbad298ea538662152f3afd723aca3db7c27",
+  "pool_size_bytes": 4129680,
+  "pool_compression_ratio": 21.32862207241239,
+  "shell_digest": "a9d7518addd035f7af4c1783128b65d9db0fd609ed4474f64faa7eeb671aaa30",
+  "shell_size_bytes": 55052064,
+  "shell_codec": "turbo_8bit_batched",
+  "num_tokens": 224,
+  "num_layers": 24,
+  "num_kv_heads": 32,
+  "head_dim": 64,
+  "build_ms": 647,
+  "roundtrip_ms": 1192,
+  "lossy": false,
+  "output_bytes": 88080576
+}

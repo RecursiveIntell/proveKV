@@ -21,7 +21,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use prove_kv::codec::FibQuantAdapter;
-use prove_kv::policy::{CompressionPolicy, FibConfig};
+use prove_kv::policy::{CompressionPolicy, FibConfig, RadiiCompression, TurboConfig};
 use prove_kv::shape::{AttentionType, KvTensorShape};
 use prove_kv::SharedKVPool;
 
@@ -67,10 +67,11 @@ struct OutputManifest {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        eprintln!("usage: {} <input.json> <output.bin>", args[0]);
+    if args.len() < 3 || args.len() > 4 {
+        eprintln!("usage: {} <input.json> <output.bin> [--lossy]", args[0]);
         std::process::exit(1);
     }
+    let lossy = args.iter().any(|a| a == "--lossy");
     let input_path = PathBuf::from(&args[1]);
     let output_path = PathBuf::from(&args[2]);
 
@@ -96,7 +97,17 @@ fn main() {
         input.tokens.into_iter().map(|t| (t.id, t.vector)).collect();
     let seed = input.seed.unwrap_or(42);
 
-    let policy = CompressionPolicy::default_two_tier();
+    let mut policy = CompressionPolicy::default_two_tier();
+    if lossy {
+        policy.turbo_config = TurboConfig {
+            bits: 8,
+            projections: 32,
+            radii_compression: RadiiCompression::Lossy,
+        };
+        eprintln!("[fast] lossy mode: TQB1-L (BlockLogU8 radii)");
+    } else {
+        eprintln!("[fast] lossless mode: TQB1 (f32 radii)");
+    }
     let fib_cfg: FibConfig = policy.fib_config.clone();
     eprintln!(
         "[fast] building pool: shape={:?} num_tokens={} num_layers={} num_kv_heads={} head_dim={}",
@@ -107,7 +118,8 @@ fn main() {
         shape.head_dim
     );
     let t_build = Instant::now();
-    let (pool, receipt) = SharedKVPool::build(&corpus, &shape, seed).expect("build pool");
+    let (pool, receipt) =
+        SharedKVPool::build_with_policy(&corpus, &shape, seed, policy).expect("build pool");
     let build_ms = t_build.elapsed().as_millis() as u64;
     eprintln!(
         "[fast] build ok in {build_ms}ms: pool_id={} backend={} codec={:?} ratio={:.2}x size={} bytes",
@@ -164,23 +176,62 @@ fn main() {
                 .build_quantizer(seed)
                 .expect("create quantizer");
             let layer = &pool.layers[layer_idx];
-            // Deserialize all K and V codes for this layer. The pool
-            // stores compact binary bytes (per the new wire format
-            // introduced for fib_k4_n32), with a JSON fallback for
-            // pools written by older proveKV versions.
-            let decode_one = |b: &prove_kv::codec::CompressedBlock| -> fib_quant::FibCodeV1 {
-                let bytes = &b.encoded_payload;
-                if bytes.len() >= 3 && bytes[0..3] == fib_quant::COMPACT_MAGIC {
-                    fib_quant::FibCodeV1::from_compact_bytes(bytes, quantizer.profile())
-                        .expect("decode K/V FibCodeV1 compact")
-                } else {
-                    serde_json::from_slice(bytes).expect("decode K/V FibCodeV1 json fallback")
-                }
+            // Deserialize all K and V codes for this layer.
+            //
+            // Two formats are supported:
+            //   1. BATCHED (FB2 magic): one block per K side and one per V
+            //      side, each containing `num_tokens * num_kv_heads` codes.
+            //   2. Legacy per-vector (FB1 magic or JSON): `key_blocks.len() ==
+            //      num_tokens * num_kv_heads`, one code per block.
+            //
+            // fast_roundtrip exists to drive a fast path on legacy data; the
+            // batched path is handled here.
+            let k_codes: Vec<fib_quant::FibCodeV1> = if layer.is_batched() {
+                // Batched: a single block holds ALL the codes for the K side.
+                fib_quant::FibCodeV1::decode_batch(
+                    &layer.key_blocks[0].encoded_payload,
+                    quantizer.profile(),
+                )
+                .expect("decode K batched (FB2)")
+            } else {
+                // Legacy per-vector: one code per block.
+                layer
+                    .key_blocks
+                    .iter()
+                    .map(|b| {
+                        let bytes = &b.encoded_payload;
+                        if bytes.len() >= 3 && &bytes[0..3] == fib_quant::COMPACT_MAGIC {
+                            fib_quant::FibCodeV1::from_compact_bytes(bytes, quantizer.profile())
+                                .expect("decode K/V FibCodeV1 compact (FB1)")
+                        } else {
+                            serde_json::from_slice(bytes)
+                                .expect("decode K/V FibCodeV1 json fallback")
+                        }
+                    })
+                    .collect()
             };
-            let k_codes: Vec<fib_quant::FibCodeV1> =
-                layer.key_blocks.iter().map(decode_one).collect();
-            let v_codes: Vec<fib_quant::FibCodeV1> =
-                layer.value_blocks.iter().map(decode_one).collect();
+            let v_codes: Vec<fib_quant::FibCodeV1> = if layer.is_batched() {
+                fib_quant::FibCodeV1::decode_batch(
+                    &layer.value_blocks[0].encoded_payload,
+                    quantizer.profile(),
+                )
+                .expect("decode V batched (FB2)")
+            } else {
+                layer
+                    .value_blocks
+                    .iter()
+                    .map(|b| {
+                        let bytes = &b.encoded_payload;
+                        if bytes.len() >= 3 && &bytes[0..3] == fib_quant::COMPACT_MAGIC {
+                            fib_quant::FibCodeV1::from_compact_bytes(bytes, quantizer.profile())
+                                .expect("decode K/V FibCodeV1 compact (FB1)")
+                        } else {
+                            serde_json::from_slice(bytes)
+                                .expect("decode K/V FibCodeV1 json fallback")
+                        }
+                    })
+                    .collect()
+            };
 
             // Fast batch decode. Each result has one Vec<f32> per code,
             // each of length head_dim.

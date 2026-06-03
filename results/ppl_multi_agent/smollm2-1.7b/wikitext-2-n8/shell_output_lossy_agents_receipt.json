@@ -1,0 +1,55 @@
+{
+  "n_agents": 8,
+  "per_agent": [
+    {
+      "agent_id": "agent_0",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_1",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_2",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_3",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_4",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_5",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_6",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    },
+    {
+      "agent_id": "agent_7",
+      "num_unique_tokens": 28,
+      "shell_bytes": 3098400,
+      "shell_codec": "turbo_8bit_batched_lossy"
+    }
+  ],
+  "total_shell_bytes": 24787200,
+  "avg_shell_bytes": 3098400.0
+}

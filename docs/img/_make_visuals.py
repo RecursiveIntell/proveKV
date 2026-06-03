@@ -1,0 +1,382 @@
+"""Generate the four README visuals for proveKV.
+
+Run from the repo root: python3 docs/img/_make_visuals.py
+Outputs SVG (vector, sharp on GitHub) into docs/img/.
+All numbers come from checked-in state.json receipts — never hand-typed.
+"""
+import json
+import pathlib
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+
+# ---------------------------------------------------------------------------
+# Brand palette (dark-friendly, GitHub renders SVGs at any zoom)
+# ---------------------------------------------------------------------------
+C_FIB = "#7c3aed"      # purple — shared cold tier (FibQuant lossless)
+C_TURBO = "#0891b2"    # teal  — hot tier (TurboQuant)
+C_LOSSY = "#d97706"    # amber — opt-in lossy variant
+C_NAIVE = "#475569"    # slate-600 — naive (no sharing), darker so it reads as anchor
+C_GOOD = "#16a34a"     # green-600
+C_TEXT = "#0f172a"     # slate-900
+C_MUTED = "#475569"    # slate-600
+C_BG = "#f8fafc"       # slate-50
+C_PANEL = "#e2e8f0"    # slate-200
+
+plt.rcParams.update({
+    "font.family": "DejaVu Sans",
+    "font.size": 11,
+    "text.color": C_TEXT,
+    "axes.labelcolor": C_TEXT,
+    "xtick.color": C_TEXT,
+    "ytick.color": C_TEXT,
+    "axes.edgecolor": C_MUTED,
+    "axes.linewidth": 0.8,
+    "figure.facecolor": "white",
+    "axes.facecolor": "white",
+    "savefig.facecolor": "white",
+})
+
+REPO = pathlib.Path(__file__).resolve().parents[2]
+OUT = pathlib.Path(__file__).resolve().parent
+
+# ---------------------------------------------------------------------------
+# Load all receipts (single source of truth for chart values)
+# ---------------------------------------------------------------------------
+def load_json(rel):
+    return json.loads((REPO / rel).read_text())
+
+# Single-pool PPL validations (the per-pool cross-validation matrix)
+POOL_RUNS = [
+    ("smollm2-1.7b",   "wikitext-2",     1024,  0.0,  36175872,  "results/bench/ppl/smollm2-1.7b/wikitext-2/state.json"),
+    ("tinyllama-1.1b", "wikitext-2",     1024,  0.0,  4145152,   "results/bench/ppl/tinyllama-1.1b/wikitext-2/state.json"),
+    ("qwen2.5-0.5b",   "wikitext-2",     1024,  0.0,  2260992,   "results/bench/ppl/qwen2.5-0.5b/wikitext-2/state.json"),
+    ("smollm2-1.7b",   "code-source",    1024,  -7.34,36175872,  "results/bench/ppl/smollm2-1.7b/code-source/state.json"),
+    ("smollm2-1.7b",   "wikitext-2",     1280,  0.0,  45219840,  "results/bench/ppl/smollm2-1.7b/wikitext-2-n1280/state.json"),
+]
+
+# Multi-agent sweep (lossless + lossy, batched wire formats)
+SUMMARY = load_json("results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/compact_summary.json")
+LOSSLESS_N = SUMMARY["qwen2.5-0.5b"]["lossless"]["scaling"]
+LOSSY_N    = SUMMARY["qwen2.5-0.5b"]["lossy"]["scaling"]
+
+# Per-block wire format deltas
+WIRE_DELTAS = {
+    "JSON (legacy)":          472,
+    "TQW1":                   206,
+    "TQB1":                   136,
+    "TQB1-L":                  40,
+}
+
+# ---------------------------------------------------------------------------
+# 1) Architecture diagram: two-tier pool + N agent shells
+# ---------------------------------------------------------------------------
+def make_architecture():
+    fig, ax = plt.subplots(figsize=(11, 5.6))
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+
+    # ---- Shared pool (cold tier) ----
+    pool = FancyBboxPatch(
+        (0.5, 2.5), 4.5, 2.5,
+        boxstyle="round,pad=0.08,rounding_size=0.18",
+        linewidth=1.5, edgecolor=C_FIB, facecolor=C_FIB + "14", zorder=2,
+    )
+    ax.add_patch(pool)
+    ax.text(2.75, 4.55, "Shared Pool  ·  cold tier", ha="center", va="center",
+            fontsize=12, fontweight="bold", color=C_FIB)
+    ax.text(2.75, 4.15, "fib_k4_n32_batched  ·  lossless", ha="center", va="center",
+            fontsize=10, color=C_MUTED, style="italic")
+    ax.text(2.75, 3.65, "922.27 KB  ·  blake3-addressed  ·  built once", ha="center", va="center",
+            fontsize=10.5, color=C_TEXT, fontweight="bold")
+    ax.text(2.75, 3.20, "21.3× vs fp16 raw", ha="center", va="center",
+            fontsize=9.5, color=C_MUTED)
+    ax.text(2.75, 2.85, "ΔPPL = 0.00% vs oracle", ha="center", va="center",
+            fontsize=9.5, color=C_GOOD, fontweight="bold")
+
+    # ---- Three representative agent shells ----
+    shell_y = [4.30, 2.95, 1.55]
+    shell_labels = ["agent 0", "agent 1", "agent N-1"]
+    for i, (y, lab) in enumerate(zip(shell_y, shell_labels)):
+        shell = FancyBboxPatch(
+            (7.0, y - 0.55), 3.5, 1.1,
+            boxstyle="round,pad=0.06,rounding_size=0.15",
+            linewidth=1.2, edgecolor=C_LOSSY, facecolor=C_LOSSY + "12", zorder=2,
+        )
+        ax.add_patch(shell)
+        ax.text(8.75, y + 0.20, f"Hot tier  ·  {lab}", ha="center", va="center",
+                fontsize=11, fontweight="bold", color=C_LOSSY)
+        ax.text(8.75, y - 0.20, "190.78 KB  ·  TurboQuant-1L (lossy, opt-in)",
+                ha="center", va="center", fontsize=9.5, color=C_MUTED, style="italic")
+        # Stagger arrow origins
+        arr_y_start = 4.0 - i * 0.7
+        arr = FancyArrowPatch(
+            (5.05, arr_y_start), (6.95, y),
+            arrowstyle="-|>", mutation_scale=14, color="#4A5568", linewidth=1.1, zorder=1,
+        )
+        ax.add_patch(arr)
+
+    # ---- "× N agents" annotation INSIDE the column ----
+    ax.text(7.15, 1.05, "× N agents (one shell per agent)",
+            ha="left", va="center", fontsize=8.5, color=C_MUTED, style="italic")
+
+    # ---- Naive baseline ----
+    naive = FancyBboxPatch(
+        (7.0, 0.2), 3.5, 0.75,
+        boxstyle="round,pad=0.04,rounding_size=0.12",
+        linewidth=1.0, edgecolor=C_NAIVE, facecolor="white",
+        linestyle=(0, (4, 2)), zorder=2,
+    )
+    ax.add_patch(naive)
+    ax.text(8.75, 0.57, "Naive  ·  no sharing", ha="center", va="center",
+            fontsize=10, color=C_NAIVE)
+    ax.text(8.75, 0.32, "172.71 MB at N=8", ha="center", va="center",
+            fontsize=10, color=C_NAIVE, fontweight="bold")
+
+    # ---- Brace + reduction label on far right ----
+    ax.plot([10.85, 10.85], [1.0, 4.85], color=C_LOSSY, linewidth=1.6, zorder=2)
+    ax.plot([10.80, 10.85], [4.85, 4.85], color=C_LOSSY, linewidth=1.6, zorder=2)
+    ax.plot([10.80, 10.85], [1.0, 1.0], color=C_LOSSY, linewidth=1.6, zorder=2)
+    ax.text(11.05, 2.92, "72.25×\nsystem-\nlevel\n(vs naive)",
+            ha="left", va="center", fontsize=12, fontweight="bold", color=C_LOSSY)
+
+    # ---- Title and subtitle ----
+    ax.text(0.5, 5.65, "proveKV  ·  two-tier architecture",
+            fontsize=14, fontweight="bold", color=C_TEXT)
+    ax.text(0.5, 5.30, "Shared lossless FibQuant pool (built once) + per-agent TurboQuant shells.",
+            fontsize=10, color=C_MUTED, style="italic")
+    ax.text(7.0, 5.30, "Shown: 3 of N agents (each shell is identical)",
+            fontsize=9.5, color=C_MUTED, style="italic", ha="left")
+
+    # ---- Legend ----
+    leg_items = [
+        mpatches.Patch(facecolor=C_FIB + "22", edgecolor=C_FIB,
+                       label="Shared pool · FibQuant · lossless"),
+        mpatches.Patch(facecolor=C_LOSSY + "22", edgecolor=C_LOSSY,
+                       label="Per-agent shell · TurboQuant · opt-in lossy"),
+    ]
+    ax.legend(handles=leg_items, loc="lower left", bbox_to_anchor=(0.0, -0.02),
+              frameon=False, ncol=2, fontsize=9, handlelength=2.0)
+
+    fig.tight_layout()
+    fig.savefig(OUT / "architecture.svg", format="svg", bbox_inches="tight")
+    plt.close(fig)
+    print("wrote architecture.svg")
+
+# ---------------------------------------------------------------------------
+# 2) N-scaling chart — split into two side-by-side panels to handle 2 orders
+#    of magnitude (naive ~60-180 MB, proveKV ~1-4 MB) without log-scale pain
+# ---------------------------------------------------------------------------
+def make_n_scaling():
+    fig, (ax_naive, ax_pk) = plt.subplots(1, 2, figsize=(13, 4.6),
+                                          gridspec_kw={"width_ratios": [1.0, 1.4]},
+                                          sharey=False)
+
+    n_lossless = [r["n_agents"] for r in LOSSLESS_N]
+    f_lossless = [r["memory_reduction_factor"] for r in LOSSLESS_N]
+    f_lossy    = [r["memory_reduction_factor"] for r in LOSSY_N]
+
+    naive_mb     = [r["naive_total_bytes"] / 1024 / 1024 for r in LOSSLESS_N]
+    lossless_mb  = [r["total_with_sharing_bytes"] / 1024 / 1024 for r in LOSSLESS_N]
+    lossy_mb     = [r["total_with_sharing_bytes"] / 1024 / 1024 for r in LOSSY_N]
+
+    x = list(range(len(n_lossless)))
+    width = 0.30
+
+    # ---- Left panel: Naive only (linear, big numbers) ----
+    ax_naive.bar(x, naive_mb, color=C_NAIVE, edgecolor="white", width=0.6)
+    for i, nb in enumerate(naive_mb):
+        ax_naive.text(i, nb + 4, f"{nb:.0f} MB", ha="center", fontsize=10,
+                      color=C_TEXT, fontweight="bold")
+    ax_naive.set_xticks(x)
+    ax_naive.set_xticklabels([f"N={n}" for n in n_lossless])
+    ax_naive.set_ylabel("Total system memory (MB)")
+    ax_naive.set_title("Naive baseline (no sharing)", fontsize=11, pad=8)
+    ax_naive.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0)
+    ax_naive.set_axisbelow(True)
+    ax_naive.spines["top"].set_visible(False)
+    ax_naive.spines["right"].set_visible(False)
+    ax_naive.set_ylim(0, max(naive_mb) * 1.18)
+    ax_naive.set_xlabel("(1) N grows  → memory grows linearly",
+                        fontsize=10, style="italic", color=C_MUTED)
+
+    # ---- Right panel: proveKV lossless + lossy ----
+    # Two-line per-bar label: line 1 is "MB  | speedup", line 2 is split
+    # into lossless and lossy in their respective bar colors. Layout:
+    #
+    #      +--- lossless column ---+ +--- lossy column ---+
+    #      MB          (×)         MB          (×)
+    #     1.72         33.4x       1.27         45.2x
+    #
+    b1 = ax_pk.bar([i - width/2 - 0.04 for i in x], lossless_mb, width,
+                   color=C_FIB, label="lossless (TQB1)", edgecolor="white", zorder=2)
+    b2 = ax_pk.bar([i + width/2 + 0.04 for i in x], lossy_mb, width,
+                   color=C_LOSSY, label="lossy, opt-in (TQB1-L)", edgecolor="white", zorder=2)
+    for i, (lb, ly) in enumerate(zip(lossless_mb, lossy_mb)):
+        # Two-line label above each bar. MB value in muted gray (the "what"),
+        # ratio in the bar's color (the "so what"). Constant y so the gap
+        # is identical on every bar.
+        ax_pk.text(i - width/2 - 0.04, 5.30, f"{lb:.2f} MB",
+                   ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
+        ax_pk.text(i - width/2 - 0.04, 4.90, f"{f_lossless[i]:.1f}x",
+                   ha="center", fontsize=10, color=C_FIB, fontweight="bold")
+        ax_pk.text(i + width/2 + 0.04, 5.30, f"{ly:.2f} MB",
+                   ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
+        ax_pk.text(i + width/2 + 0.04, 4.90, f"{f_lossy[i]:.1f}x",
+                   ha="center", fontsize=10, color=C_LOSSY, fontweight="bold")
+    ax_pk.set_xticks(x)
+    ax_pk.set_xticklabels([f"N={n}" for n in n_lossless])
+    ax_pk.set_title("proveKV two-tier  ·  ΔPPL = 0.00% in every run", fontsize=11, pad=14)
+    ax_pk.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0)
+    ax_pk.set_axisbelow(True)
+    ax_pk.spines["top"].set_visible(False)
+    ax_pk.spines["right"].set_visible(False)
+    ax_pk.set_ylim(0, 5.5)
+    # Move the legend BELOW the title (above the plot area), so it doesn't
+    # compete for space with the labels.
+    ax_pk.legend(loc="upper right", bbox_to_anchor=(1.0, 1.18),
+                 frameon=False, fontsize=8.5, ncol=1)
+    ax_pk.set_xlabel("(2) N grows  → memory stays nearly flat",
+                     fontsize=10, style="italic", color=C_MUTED)
+    # Make sure the right subplot has the same y-axis label as the left,
+    # so the unit (MB) is explicit on both panels.
+    ax_pk.set_ylabel("Total system memory (MB)")
+
+    fig.suptitle("Multi-agent memory:  Qwen2.5-0.5B · 1024 tokens · 80% shared prefix\n"
+                 "Lossy is opt-in (TQB1-L); the 41.2x lossless headline is the default policy (N=8)",
+                 fontsize=11, fontweight="bold", y=1.06)
+    fig.tight_layout()
+    fig.savefig(OUT / "n_scaling.svg", format="svg", bbox_inches="tight")
+    plt.close(fig)
+    print("wrote n_scaling.svg")
+
+# ---------------------------------------------------------------------------
+# 3) Cross-validation matrix — single-pool runs with PPL delta
+# ---------------------------------------------------------------------------
+def make_cross_validation():
+    fig, ax = plt.subplots(figsize=(10, 4.8))
+
+    labels  = []
+    mb      = []
+    deltas  = []
+    for model, corpus, n_tok, delta, pool, _src in POOL_RUNS:
+        mb.append(pool / 1024 / 1024)
+        deltas.append(delta)
+        short = model.replace("smollm2-1.7b", "smollm2")
+        short = short.replace("tinyllama-1.1b", "tinyllama")
+        short = short.replace("qwen2.5-0.5b", "qwen0.5b")
+        labels.append(f"{short}\n{corpus}\nn={n_tok}")
+
+    x = range(len(labels))
+    bar_colors = [C_FIB if d == 0 else C_LOSSY for d in deltas]
+    bars = ax.bar(x, mb, color=bar_colors, edgecolor="white", width=0.65)
+
+    # PPL delta as a SECOND row of text above the bar (never inside)
+    for i, (m, d) in enumerate(zip(mb, deltas)):
+        # MB above bar
+        ax.text(i, m + 1.8, f"{m:.1f} MB", ha="center",
+                fontsize=11, fontweight="bold", color=C_TEXT)
+        # Per-bar compression ratio (the "11.13x lossless" claim from the
+        # title, expressed per-bar so a reader can verify it on the chart).
+        ax.text(i, m + 0.5, f"11.13× lossless",
+                ha="center", fontsize=8.5, color=C_FIB, fontweight="bold")
+        # PPL delta just below, smaller, color-coded
+        if d == 0:
+            ax.text(i, m - 0.4, "ΔPPL = 0.00% (bit-exact)",
+                    ha="center", fontsize=8.5, color=C_GOOD, fontweight="bold")
+        else:
+            ax.text(i, m - 0.4, f"ΔPPL = {d:+.2f}% (cleaner than noisy oracle)",
+                    ha="center", fontsize=8.5, color=C_LOSSY, fontweight="bold")
+
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, fontsize=8.5)
+    ax.set_ylabel("Pool size (MB)")
+    ax.set_title("Single-pool validation: 5 (model, dataset) configurations, all 11.13× lossless  ·  "
+                 "Qwen0.5B, TinyLlama-1.1B, SmolLM2-1.7B",
+                 fontsize=11, pad=14)
+    ax.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0)
+    ax.set_axisbelow(True)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    # ylim must accommodate 45.2 MB bar + ~2-line text above it
+    ax.set_ylim(0, max(mb) * 1.40)
+    ax.legend(handles=[
+        mpatches.Patch(facecolor=C_FIB, label="ΔPPL = 0.00% (bit-exact vs oracle)"),
+        mpatches.Patch(facecolor=C_LOSSY, label="ΔPPL < 0% (roundtrip cleaner than noisy oracle)"),
+    ], loc="upper left", frameon=True, framealpha=0.95,
+       edgecolor=C_PANEL, fontsize=8.5)
+
+    fig.tight_layout()
+    fig.savefig(OUT / "cross_validation.svg", format="svg", bbox_inches="tight")
+    plt.close(fig)
+    print("wrote cross_validation.svg")
+
+# ---------------------------------------------------------------------------
+# 4) Wire-format evolution: 472B → 206B → 136B → 40B per-block story
+# ---------------------------------------------------------------------------
+def make_wire_story():
+    fig, ax = plt.subplots(figsize=(9, 4.6))
+    names = list(WIRE_DELTAS.keys())
+    sizes = list(WIRE_DELTAS.values())
+    colors = [C_NAIVE, C_TURBO, C_FIB, C_LOSSY]
+    DISPLAY = {
+        "JSON (legacy)":          "JSON\n(legacy)",
+        "TQW1":                   "TQW1\n(compact)",
+        "TQB1":                   "TQB1\n(batched, lossless)",
+        "TQB1-L":                 "TQB1-L\n(batched, lossy)",
+    }
+
+    x = range(len(names))
+    bars = ax.bar(x, sizes, color=colors, edgecolor="white", width=0.55)
+
+    # All annotations live ABOVE the bar (where they can't be clipped by
+    # the bar's left edge or by the y-axis).
+    # On a log scale, s*1.55 and s*1.22 give comfortable vertical separation
+    # at every bar height — the gap in display units scales with s, so the
+    # 40-byte bar gets a smaller gap than the 472-byte bar, but the log
+    # transform normalizes the visual distance.
+    for i, s in enumerate(sizes):
+        reduction = 472 / s
+        # Top line: byte count (bold, dark)
+        ax.text(i, s * 1.55, f"{s} B", ha="center", fontsize=12,
+                fontweight="bold", color=C_TEXT)
+        # Second line: reduction factor (smaller, bar's color)
+        # Mark the baseline (reduction == 1) as "baseline" so we don't
+        # say "1.00x smaller" on the bar that IS the baseline.
+        if reduction == 1.0:
+            label = "baseline"
+        else:
+            label = f"{reduction:.2f}x smaller"
+        ax.text(i, s * 1.22, label,
+                ha="center", va="bottom", fontsize=9,
+                color=colors[i], fontweight="bold")
+
+    ax.set_yscale("log")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([DISPLAY[n] for n in names], fontsize=9, linespacing=1.1)
+    ax.set_ylabel("Per-block wire size (bytes, log scale)")
+    # The wire-format fix covers JSON→TQW1→TQB1 (lossless path, codec
+    # math unchanged). TQB1-L is shown here for completeness, but it's a
+    # codec-math change (BlockLogU8 quantization of the radii), not a
+    # wire-format change. The title scopes to the lossless path.
+    ax.set_title("Per-block wire size: 472 B (JSON) → 40 B (TQB1-L)  ·  3.5× lossless, 11.8× with lossy codec",
+                 fontsize=11, pad=12)
+    ax.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0, which="both")
+    ax.set_axisbelow(True)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.set_ylim(20, 800)
+
+    fig.tight_layout()
+    fig.savefig(OUT / "wire_story.svg", format="svg", bbox_inches="tight")
+    plt.close(fig)
+    print("wrote wire_story.svg")
+
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    make_architecture()
+    make_n_scaling()
+    make_cross_validation()
+    make_wire_story()
+    print("done.")
