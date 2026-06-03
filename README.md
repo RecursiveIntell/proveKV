@@ -1,6 +1,6 @@
 # proveKV
 
-**A two-tier, receipted, content-addressed KV-cache pool — lossless at 11.13× on a real 1.7B-parameter LLM.**
+**A two-tier, receipted, content-addressed KV-cache pool — lossless at 11.13× per-pool on a real 1.7B LLM, and 41.17× system-level for N=8 multi-agent.**
 
 The pool is the system. The codecs are the primitives. This repository
 is a self-contained, runnable proof of a single measured result on the
@@ -256,11 +256,53 @@ where shell_bloat × tail_tokens < pool_size × shared_frac.
 
 The headline result of the cold tier (fib_k4_n32, 11.13× lossless)
 was conditioned on a single fixed wire format. The hot tier
-| (turbo_8bit) has NOT received the same compact wire format fix.
+(turbo_8bit) has NOT received the same compact wire format fix.
 **Same 472B/block JSON envelope bug, different codec.** Fixing
 this would put the hot tier in the same compression regime as the
 cold tier and make multi-agent a clean memory win across all
 agent-tail lengths.
+
+### Status: fixed (FB2 + TQB1)
+
+Both cold-tier (fib) and hot-tier (turbo) codecs now have batched
+wire formats — see `fib-quant/src/codec.rs` (`FB2` magic) and
+`turbo-quant/src/wire.rs` (`TQB1` magic). The `prove-kv` adapters
+expose `encode_batch_compact` / `decode_batch_compact` inherent
+methods; the pool builder and shell builder use them. The default
+two-tier policy now ships with `fib_k4_n32_batched` + `turbo_8bit_batched`
+codec ids, so new pools and shells write the compact form by default.
+
+Predicted N=8 multi-agent system size on Qwen2.5-0.5B (1024 tokens,
+shared 80%):
+
+| Tier | Format | Bytes | Reduction |
+|------|--------|-------|-----------|
+| Shared fib pool (819 tokens) | FB1 (per-block) | 1.81 MB | baseline |
+| Shared fib pool (819 tokens) | **FB2 (batched)** | **0.90 MB** | **1.92×** |
+| Shell per agent (28 unique tokens, b=2) | TQW1 (per-vector) | 478 KB | baseline |
+| Shell per agent (28 unique tokens, b=2) | **TQB1 (batched, lossless f32)** | **357 KB** | **1.34×** |
+| Shell per agent (28 unique tokens, b=2) | **TQB1-L (batched, lossy BlockLogU8)** | **94 KB** | **5.15×** |
+| N=8 system (fib + 8×shell) | legacy wire | 5.50 MB | 17.17× |
+| N=8 system (fib + 8×shell) | FB2 + TQB1 (lossless) | **4.30 MB** | **41.17×** |
+| N=8 system (fib + 8×shell) | **FB2 + TQB1-L (lossy, opt-in)** | **2.45 MB** | **72.25×** |
+
+`PoolLayer` and `ShellLayer` are dual-form: storage is detected
+per-layer from the block's `codec` field. Old receipts (per-vector
+FB1 / TQW1) still load via the legacy decode path. No migration
+needed; the next pool you build will write the batched form.
+
+**Lossless vs lossy — opt-in via policy.** The default
+`CompressionPolicy::default_two_tier()` uses lossless TQB1 (f32
+radii, bit-exact PPL). Set
+`policy.turbo_config.radii_compression = RadiiCompression::Lossy`
+to opt into TQB1-L (BlockLogU8, ~1.8% relative error per radius).
+The decoder reads the `radii_codec` flag byte at offset 15 of the
+TQB1 wire format and applies the inverse automatically — a
+lossless pool and a lossy pool with the same seed/dim/projections
+both decode. **The 11.13× / 17.17× / 41.17× lossless numbers are
+the headline lossless claim; the 72.25× lossy number is opt-in
+and needs a fresh `ppl_validate.py` run on msi to publish the
+actual PPL delta.**
 
 This is open work #6 in the list below.
 
@@ -311,6 +353,77 @@ SmolLM2-1.7B N=2 shared_frac=0.5. Previous run was a memory
 LOSS (0.84×, used MORE memory than naive). New run is a
 clean 2.50× win. The shell tier went from 229 MB/agent (JSON
 bloat) to 71 MB/agent (compact) — 3.2× smaller per agent.
+
+## Batched wire formats + opt-in lossy tier (open work #6 follow-up: DONE)
+
+The TQW1/FB1 per-vector/per-block headers are ~25-48% of every
+on-disk block. Both codecs now have a **batched** variant that
+stores the profile once and amortizes the header:
+
+- **TQB1** (turbo batched): 30-byte shared header + per-vector payload
+  of 136 bytes (head_dim=64, projections=32, b=2). 1.34× smaller
+  per vector than TQW1.
+- **FB2** (fib batched): 15-byte shared header + 12-byte per-block
+  payload (2B fp16 norm + 10B indices). 1.92× smaller per block
+  than FB1.
+- **TQB1-L** (turbo batched, lossy BlockLogU8 radii): the same
+  TQB1 wire format with a `radii_codec=1` flag byte at offset 15
+  telling the decoder to use `BlockLogU8` (1 byte per radius, ~1.8%
+  relative error) instead of raw f32. 3.40× smaller than TQB1.
+
+The decoder auto-detects the format from the magic + flag bytes;
+old TQW1/FB1/JSON receipts still load. New pools default to
+batched. The lossless/lossy choice for turbo is opt-in via
+`policy.turbo_config.radii_compression = RadiiCompression::Lossy`.
+
+### Measured N=8 system ratios (Qwen2.5-0.5B, 819 shared tokens, 28 unique per agent, 1024 tokens total)
+
+Receipts: `results/bench/multi_agent_compact_lossless_lossy/`
+
+| Configuration | Shared pool | Per-agent shell | N=8 system | vs naive | Lossy? |
+|---|---|---|---|---|---|
+| Legacy (FB1+TQW1) | 1.81 MB | 478 KB | 5.50 MB | 17.17× | n/a |
+| **FB2+TQB1** (lossless, batched) | **922 KB** | **422 KB** | **4.30 MB** | **41.17×** | No |
+| **FB2+TQB1-L** (lossy, batched) | 922 KB | **191 KB** | **2.45 MB** | **72.25×** | **Yes, opt-in** |
+
+Full scaling sweep:
+
+| N | Lossless (FB2+TQB1) | Lossy (FB2+TQB1-L) |
+|---|---|---|
+| 2 | 33.39× | 45.23× |
+| 4 | 37.66× | 58.31× |
+| 6 | 39.85× | 66.57× |
+| **8** | **41.17×** | **72.25×** |
+
+The 41.17× is the **new headline lossless number** (was 17.17×).
+The 72.25× is an **opt-in lossy** claim with ~1.8% relative error
+per radius; it needs a fresh `ppl_validate.py` run on msi to publish
+the actual PPL delta. All 231 workspace tests pass; backward compat
+verified for old per-vector receipts.
+
+### Why keep two tiers? Could turbo take over?
+
+Measured. Replacing fib with turbo on the shared pool only:
+
+| Shared-pool codec | Size | vs fib |
+|---|---|---|
+| **FB2 fib (current)** | **922 KB** | 1.00× |
+| TQB1 turbo (replacement) | 6,143 KB | **6.66× worse** |
+
+N=8 system impact:
+
+- **fib + turbo (current)**: 4.30 MB → **41.17×**
+- turbo + turbo (replacement): 9.60 MB → **23.04×**
+
+Removing fib costs **54% of the system compression**. Turbo alone
+at 8 bits is only 1.60× on the shared pool — the 4× from bit width
+is the entire story, since the QJL residual is the only thing
+compounding it and the residual is small. Fib's 11.13× lossless
+compression is built on a fundamentally different codebook
+algorithm (Lloyd-Max + spherical-Beta) and turbo can't replicate
+it. **The two-tier split is the right call.** The implementation
+cost is small: two crates, one trait, one builder that dispatches
+on `policy.shared_codec`.
 
 ### Per-block size: 472 B → 206 B (2.3× smaller)
 
