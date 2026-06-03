@@ -74,7 +74,8 @@ Both tiers produce byte-identical PPL to the oracle at 1024 tokens on SmolLM2-1.
 
 ## What this does NOT prove
 
-- The bench is at 1024 tokens on one model (SmolLM2-1.7B) on one corpus (WikiText-2). The 41.17× / 72.25× compression ratios are size-only at larger scales.
+- The bench is at 1024 tokens on one model (SmolLM2-1.7B) on one corpus (WikiText-2). The 37.31× / 65.88× numbers here are valid for this configuration; whether they hold at longer context, different model, or different corpus is unknown.
+- The 41.17× / 72.25× numbers mentioned in the README's per-tier table are a SEPARATE measurement on Qwen2.5-0.5B (kv_heads=2) with a synthetic corpus — they are not PPL-validated. The 37.31× / 65.88× numbers here are the real PPL-validated ratios for SmolLM2-1.7B-Instruct.
 - The PPL delta at longer context (4K, 8K, 32K) is unknown. At 1024 tokens, both tiers are within the noise floor of the 1.7B model's predictions.
 - The PPL delta on different corpora (C4, code, multilingual, instruction-following) is unknown.
 - The PPL delta on different models (Qwen2.5, Llama, Mistral) is unknown.
