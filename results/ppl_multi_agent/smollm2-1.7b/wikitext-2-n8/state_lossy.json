@@ -29,11 +29,17 @@
   "phase1": {
     "lossy": true,
     "ppl": 4.8125,
-    "compression_ratio": null,
+    "compression_ratio": 65.88459955391995,
     "roundtrip_seconds": 419.19754099845886,
     "forward_seconds": 1.7706937789916992,
     "delta_ppl_pct": 0.0,
     "status": "complete",
-    "completed_at": "2026-06-03T15:35:32"
+    "completed_at": "2026-06-03T15:35:32",
+    "raw_total_bytes": 2604662784,
+    "compressed_total_bytes": 39533712,
+    "pool_size_bytes": 14746512,
+    "shells_size_bytes": 24787200,
+    "pool_compression_ratio": 21.332013970490106,
+    "naive_per_agent_full_cache": true
   }
 }
