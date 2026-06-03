@@ -39,9 +39,9 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use prove_kv::policy::CompressionPolicy;
-use prove_kv::shape::{AttentionType, KvTensorShape};
-use prove_kv::SharedKVPool;
+use provekv::policy::CompressionPolicy;
+use provekv::shape::{AttentionType, KvTensorShape};
+use provekv::SharedKVPool;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]

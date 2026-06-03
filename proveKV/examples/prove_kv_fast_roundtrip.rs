@@ -20,10 +20,10 @@ use std::time::Instant;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use prove_kv::codec::FibQuantAdapter;
-use prove_kv::policy::{CompressionPolicy, FibConfig, RadiiCompression, TurboConfig};
-use prove_kv::shape::{AttentionType, KvTensorShape};
-use prove_kv::SharedKVPool;
+use provekv::codec::FibQuantAdapter;
+use provekv::policy::{CompressionPolicy, FibConfig, RadiiCompression, TurboConfig};
+use provekv::shape::{AttentionType, KvTensorShape};
+use provekv::SharedKVPool;
 
 #[derive(Debug, Deserialize)]
 struct InputJson {

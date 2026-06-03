@@ -23,9 +23,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use prove_kv::policy::{CompressionPolicy, RadiiCompression, CODEC_FIB_K4_N32_BATCHED};
-use prove_kv::shape::{AttentionType, KvTensorShape};
-use prove_kv::SharedKVPool;
+use provekv::policy::{CompressionPolicy, RadiiCompression, CODEC_FIB_K4_N32_BATCHED};
+use provekv::shape::{AttentionType, KvTensorShape};
+use provekv::SharedKVPool;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]

@@ -9,7 +9,7 @@
 //! ## Quick Start
 //!
 //! ```rust,ignore
-//! use prove_kv::{SharedKVPool, KvTensorShape, AttentionType};
+//! use provekv::{SharedKVPool, KvTensorShape, AttentionType};
 //!
 //! let shape = KvTensorShape {
 //!     attention_type: AttentionType::MHA,

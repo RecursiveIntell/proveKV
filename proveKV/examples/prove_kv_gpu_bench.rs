@@ -17,10 +17,10 @@
 
 use std::time::Instant;
 
-use prove_kv::codec::create_codec;
-use prove_kv::pool::SharedKVPool;
-use prove_kv::policy::CODEC_FIB_K4_N32;
-use prove_kv::shape::{AttentionType, KvTensorShape};
+use provekv::codec::create_codec;
+use provekv::pool::SharedKVPool;
+use provekv::policy::CODEC_FIB_K4_N32;
+use provekv::shape::{AttentionType, KvTensorShape};
 use rand::Rng;
 use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 
@@ -82,7 +82,7 @@ fn time_encode_only(
 
     // Now time only the encode_batch calls. This is what the GPU would
     // actually accelerate.
-    let policy = prove_kv::policy::CompressionPolicy::default_two_tier();
+    let policy = provekv::policy::CompressionPolicy::default_two_tier();
     let codec = create_codec(
         CODEC_FIB_K4_N32,
         model.head_dim,

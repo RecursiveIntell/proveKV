@@ -17,12 +17,12 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use prove_kv::policy::{
+use provekv::policy::{
     CompressionPolicy, RadiiCompression, TurboConfig, CODEC_TURBO_8BIT_BATCHED,
     CODEC_TURBO_8BIT_BATCHED_LOSSY,
 };
-use prove_kv::shape::{AttentionType, KvTensorShape};
-use prove_kv::SharedKVPool;
+use provekv::shape::{AttentionType, KvTensorShape};
+use provekv::SharedKVPool;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]

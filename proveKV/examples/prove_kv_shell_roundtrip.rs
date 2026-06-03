@@ -22,11 +22,11 @@
 //! The input.json is the same shape `build_prove_kv_corpus.py` produces:
 //!   { "shape": {...}, "tokens": [{"id": "...", "vector": [f32, ...]}, ...], "seed": 42 }
 
-use prove_kv::codec::FibQuantAdapter;
-use prove_kv::manifest::ShellManifest;
-use prove_kv::policy::{CompressionPolicy, FibConfig, RadiiCompression, TurboConfig};
-use prove_kv::shape::{AttentionType, KvTensorShape};
-use prove_kv::{AgentShell, SharedKVPool};
+use provekv::codec::FibQuantAdapter;
+use provekv::manifest::ShellManifest;
+use provekv::policy::{CompressionPolicy, FibConfig, RadiiCompression, TurboConfig};
+use provekv::shape::{AttentionType, KvTensorShape};
+use provekv::{AgentShell, SharedKVPool};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -152,7 +152,7 @@ fn main() {
     eprintln!("[shell] materializing shell for {num_tokens} unique tokens");
     let t_shell = Instant::now();
     let (shell, shell_receipt) =
-        prove_kv::shell::materialize_shell(&pool, agent_id, &agent_tokens, seed)
+        provekv::shell::materialize_shell(&pool, agent_id, &agent_tokens, seed)
             .expect("materialize shell");
     let shell_ms = t_shell.elapsed().as_millis() as u64;
     let shell_size = shell_receipt.shell_size_bytes;

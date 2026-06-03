@@ -2,13 +2,13 @@
 //! per-vector and new batched), and compares sizes. This is the receipt for
 //! the wire-format-batching work — the difference IS the win.
 
-use prove_kv::codec::{create_codec, FibQuantAdapter};
-use prove_kv::KVecCodec;
-use prove_kv::policy::{
+use provekv::codec::{create_codec, FibQuantAdapter};
+use provekv::KVecCodec;
+use provekv::policy::{
     CODEC_FIB_K4_N32, CODEC_FIB_K4_N32_BATCHED, CODEC_TURBO_8BIT_BATCHED, FibConfig,
 };
-use prove_kv::pool::SharedKVPool;
-use prove_kv::shape::{AttentionType, KvTensorShape};
+use provekv::pool::SharedKVPool;
+use provekv::shape::{AttentionType, KvTensorShape};
 
 fn make_shape() -> KvTensorShape {
     KvTensorShape {
@@ -171,9 +171,9 @@ fn prove_kv_decodes_legacy_per_vector_pool() {
 /// this work — backward compat for receipts.
 #[test]
 fn prove_kv_lossless_turbo_is_unchanged_size() {
-    use prove_kv::policy::CompressionPolicy;
-    use prove_kv::pool::SharedKVPool;
-    use prove_kv::shape::{AttentionType, KvTensorShape};
+    use provekv::policy::CompressionPolicy;
+    use provekv::pool::SharedKVPool;
+    use provekv::shape::{AttentionType, KvTensorShape};
 
     let shape = make_shape();
     let corpus = make_corpus(64);
@@ -190,7 +190,7 @@ fn prove_kv_lossless_turbo_is_unchanged_size() {
         // The codec id should be the LOSSLESS batched variant.
         assert_eq!(
             layer.key_blocks[0].codec,
-            prove_kv::policy::CODEC_TURBO_8BIT_BATCHED
+            provekv::policy::CODEC_TURBO_8BIT_BATCHED
         );
     }
 }
@@ -199,11 +199,11 @@ fn prove_kv_lossless_turbo_is_unchanged_size() {
 /// and uses the lossy codec id. This is the 58.14x headline number.
 #[test]
 fn prove_kv_lossy_turbo_shell_is_smaller() {
-    use prove_kv::policy::{
+    use provekv::policy::{
         CompressionPolicy, RadiiCompression, TurboConfig, CODEC_TURBO_8BIT_BATCHED_LOSSY,
     };
-    use prove_kv::pool::SharedKVPool;
-    use prove_kv::shape::{AttentionType, KvTensorShape};
+    use provekv::pool::SharedKVPool;
+    use provekv::shape::{AttentionType, KvTensorShape};
 
     let shape = make_shape();
     let corpus = make_corpus(64);
@@ -269,7 +269,7 @@ fn prove_kv_lossy_turbo_shell_is_smaller() {
     for layer in &shell_lossless.unique_layers {
         assert_eq!(
             layer.key_blocks[0].codec,
-            prove_kv::policy::CODEC_TURBO_8BIT_BATCHED
+            provekv::policy::CODEC_TURBO_8BIT_BATCHED
         );
     }
     for layer in &shell_lossy.unique_layers {

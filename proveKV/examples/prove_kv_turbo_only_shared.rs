@@ -5,8 +5,8 @@ use std::env;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use prove_kv::codec::TurboQuantAdapter;
-use prove_kv::policy::TurboConfig;
+use provekv::codec::TurboQuantAdapter;
+use provekv::policy::TurboConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]

@@ -44,7 +44,7 @@ a corpus of vectors; encoded with fib-quant; addresses
 documents by their content digest.
 
 ```rust
-use prove_kv::SharedKVPool;
+use provekv::SharedKVPool;
 
 let pool = SharedKVPool::build(corpus, profile)?;
 // 1,557ms for 80 shared docs, 768-dim, fib-quant k=4.
@@ -63,7 +63,7 @@ docs); uses turbo-quant for the hot tier (cosine 0.9996
 fidelity).
 
 ```rust
-use prove_kv::AgentShell;
+use provekv::AgentShell;
 
 let shell = AgentShell::materialize(&pool, agent_docs, profile)?;
 // 17ms for 12 docs, 768-dim, turbo-quant 8-bit.
@@ -111,7 +111,7 @@ adapter falls back to raw and emits a `FallbackReceiptV1`.
 ## Quick Start
 
 ```rust
-use prove_kv::{SharedKVPool, AgentShell, Admissibility};
+use provekv::{SharedKVPool, AgentShell, Admissibility};
 use quant_codec_core::CodecProfile;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
