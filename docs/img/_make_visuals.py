@@ -145,8 +145,13 @@ def make_architecture():
     ax.plot([10.85, 10.85], [1.0, 4.85], color=C_LOSSY, linewidth=1.6, zorder=2)
     ax.plot([10.80, 10.85], [4.85, 4.85], color=C_LOSSY, linewidth=1.6, zorder=2)
     ax.plot([10.80, 10.85], [1.0, 1.0], color=C_LOSSY, linewidth=1.6, zorder=2)
-    ax.text(11.05, 2.92, "72.25×\nsystem-\nlevel\n(vs naive)",
-            ha="left", va="center", fontsize=12, fontweight="bold", color=C_LOSSY)
+    # Show the PPL-validated number, not the size-only Qwen0.5B number.
+    # 37.31x is the SmolLM2-1.7B + WikiText-2 N=8 system reduction
+    # with both tiers producing +0.00% PPL delta. The 41.17x / 72.25x
+    # size-only Qwen0.5B synthetic numbers are documented in the README
+    # table; the architecture diagram headline is the PPL-validated one.
+    ax.text(11.05, 2.92, "37.31×\nsystem-\nlevel\n(at N=8,\nPPL-validated)",
+            ha="left", va="center", fontsize=11, fontweight="bold", color=C_FIB)
 
     # ---- Title and subtitle ----
     ax.text(0.5, 5.65, "proveKV  ·  two-tier architecture",
@@ -175,8 +180,22 @@ def make_architecture():
 # 2) N-scaling chart — split into two side-by-side panels to handle 2 orders
 #    of magnitude (naive ~60-180 MB, proveKV ~1-4 MB) without log-scale pain
 # ---------------------------------------------------------------------------
+# Data sources for the chart:
+#   - N=2..6 bars (Qwen0.5B, size-only):
+#     results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n{N}_{lossless|lossy}/state.json
+#   - N=8 bars (BOTH Qwen0.5B size-only AND SmolLM2-1.7B PPL-validated):
+#     - Qwen0.5B: same path as above (41.17x / 72.25x)
+#     - SmolLM2-1.7B PPL-validated: results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/state_{lossless|lossy}.json
+#       (37.31x / 65.88x, oracle_ppl = roundtrip_ppl = 4.8125, delta_ppl_pct = 0.0)
+PPL_VALIDATED_N8 = {
+    "lossless_x": 37.31,   # SmolLM2-1.7B, 8 agents, 800 shared, 28 unique, 1024 tokens, WikiText-2
+    "lossy_x":    65.88,
+    "oracle_ppl": 4.8125,
+    "delta_ppl":  0.0,
+    "receipt":    "results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/",
+}
 def make_n_scaling():
-    fig, (ax_naive, ax_pk) = plt.subplots(1, 2, figsize=(13, 4.6),
+    fig, (ax_naive, ax_pk) = plt.subplots(1, 2, figsize=(14, 5.0),
                                           gridspec_kw={"width_ratios": [1.0, 1.4]},
                                           sharey=False)
 
@@ -197,9 +216,9 @@ def make_n_scaling():
         ax_naive.text(i, nb + 4, f"{nb:.0f} MB", ha="center", fontsize=10,
                       color=C_TEXT, fontweight="bold")
     ax_naive.set_xticks(x)
-    ax_naive.set_xticklabels([f"N={n}" for n in n_lossless])
+    ax_naive.set_xticklabels([f"N={n}¹" if n == 8 else f"N={n}" for n in n_lossless])
     ax_naive.set_ylabel("Total system memory (MB)")
-    ax_naive.set_title("Naive baseline (no sharing)", fontsize=11, pad=8)
+    ax_naive.set_title("Naive baseline (no sharing, 80% prefix)", fontsize=11, pad=8)
     ax_naive.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0)
     ax_naive.set_axisbelow(True)
     ax_naive.spines["top"].set_visible(False)
@@ -207,15 +226,14 @@ def make_n_scaling():
     ax_naive.set_ylim(0, max(naive_mb) * 1.18)
     ax_naive.set_xlabel("(1) N grows  → memory grows linearly",
                         fontsize=10, style="italic", color=C_MUTED)
+    # (No in-subplot annotation for the N=8 naive source — the suptitle
+    # footnote (1) explains that the N=8 bars are SmolLM2 PPL-validated
+    # while N=2..6 are Qwen0.5B size-only.)
 
     # ---- Right panel: proveKV lossless + lossy ----
-    # Two-line per-bar label: line 1 is "MB  | speedup", line 2 is split
-    # into lossless and lossy in their respective bar colors. Layout:
-    #
-    #      +--- lossless column ---+ +--- lossy column ---+
-    #      MB          (×)         MB          (×)
-    #     1.72         33.4x       1.27         45.2x
-    #
+    # The N=2..6 bars use Qwen0.5B synthetic numbers (size-only).
+    # The N=8 bars use the SAME Qwen0.5B numbers PLUS a parallel PPL-validated
+    # callout for the SmolLM2-1.7B real-LLM numbers (37.31x / 65.88x).
     b1 = ax_pk.bar([i - width/2 - 0.04 for i in x], lossless_mb, width,
                    color=C_FIB, label="lossless (TQB1)", edgecolor="white", zorder=2)
     b2 = ax_pk.bar([i + width/2 + 0.04 for i in x], lossy_mb, width,
@@ -224,37 +242,43 @@ def make_n_scaling():
         # Two-line label above each bar. MB value in muted gray (the "what"),
         # ratio in the bar's color (the "so what"). Constant y so the gap
         # is identical on every bar.
-        ax_pk.text(i - width/2 - 0.04, 5.30, f"{lb:.2f} MB",
-                   ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
         is_headline = (i == len(lossless_mb) - 1)
         rs = 13 if is_headline else 10
+        ax_pk.text(i - width/2 - 0.04, 5.30, f"{lb:.2f} MB",
+                   ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
         ax_pk.text(i - width/2 - 0.04, 4.90, f"{f_lossless[i]:.1f}x",
                    ha="center", fontsize=rs, color=C_FIB, fontweight="bold")
         ax_pk.text(i + width/2 + 0.04, 5.30, f"{ly:.2f} MB",
                    ha="center", fontsize=9, color=C_MUTED, fontweight="normal")
         ax_pk.text(i + width/2 + 0.04, 4.90, f"{f_lossy[i]:.1f}x",
                    ha="center", fontsize=10, color=C_LOSSY, fontweight="bold")
+    # PPL-validated callout for N=8. Mark the N=8 bar pair with a small
+    # "(1)" superscript that ties to a footnote in the suptitle. No in-panel
+    # callout box — the chart is too crowded.
+    # (Footnote marker "¹" is on the N=8 x-tick label, not in-panel.)
     ax_pk.set_xticks(x)
-    ax_pk.set_xticklabels([f"N={n}" for n in n_lossless])
-    ax_pk.set_title("proveKV two-tier  ·  ΔPPL = 0.00% in every run", fontsize=11, pad=14)
+    ax_pk.set_xticklabels([f"N={n}¹" if n == 8 else f"N={n}" for n in n_lossless])
+    ax_pk.set_title("proveKV two-tier  ·  ΔPPL = 0.00% in every PPL bench", fontsize=11, pad=14)
     ax_pk.grid(axis="y", linestyle=":", color=C_PANEL, zorder=0)
     ax_pk.set_axisbelow(True)
     ax_pk.spines["top"].set_visible(False)
     ax_pk.spines["right"].set_visible(False)
-    ax_pk.set_ylim(0, 5.5)
+    ax_pk.set_ylim(0, 6.5)
     # Move the legend BELOW the title (above the plot area), so it doesn't
     # compete for space with the labels.
-    ax_pk.legend(loc="upper right", bbox_to_anchor=(1.0, 1.18),
-                 frameon=False, fontsize=8.5, ncol=1)
+    ax_pk.legend(loc="upper left", frameon=True, framealpha=0.95,
+                 edgecolor=C_PANEL, fontsize=8.5, ncol=1)
     ax_pk.set_xlabel("(2) N grows  → memory stays nearly flat",
                      fontsize=10, style="italic", color=C_MUTED)
     # Make sure the right subplot has the same y-axis label as the left,
     # so the unit (MB) is explicit on both panels.
     ax_pk.set_ylabel("Total system memory (MB)")
 
-    fig.suptitle("Multi-agent memory:  Qwen2.5-0.5B · 1024 tokens · 80% shared prefix\n"
-                 "Lossy is opt-in (TQB1-L); the 41.2x lossless headline is the default policy (N=8)",
-                 fontsize=11, fontweight="bold", y=1.06)
+    fig.suptitle("Multi-agent memory scaling at 1024 tokens, 80% shared prefix\n"
+                 "(1) N=8 also PPL-validated on SmolLM2-1.7B + WikiText-2: "
+                 "37.31× lossless / 65.88× lossy, ΔPPL = 0.00% (bit-exact)\n"
+                 "N=2..6 are Qwen2.5-0.5B size-only with ΔPPL = 0.00% in every PPL run",
+                 fontsize=10.5, fontweight="bold", y=1.04)
     fig.tight_layout()
     fig.savefig(OUT / "n_scaling.svg", format="svg", bbox_inches="tight")
     plt.close(fig)
