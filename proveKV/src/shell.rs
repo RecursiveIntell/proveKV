@@ -1,9 +1,9 @@
 use std::time::Instant;
 
-use crate::codec::{create_codec, CompressedBlock, TurboQuantAdapter};
+use crate::codec::{CompressedBlock, TurboQuantAdapter};
 use crate::error::{ProveKvError, Result};
 use crate::manifest::ShellManifest;
-use crate::policy::{is_batched_turbo, is_batched_turbo_lossy, CODEC_TURBO_8BIT_BATCHED, CODEC_TURBO_8BIT_BATCHED_LOSSY};
+use crate::policy::{is_batched_turbo, is_batched_turbo_lossy, turbo_batched_codec_id};
 use crate::pool::SharedKVPool;
 use crate::receipt::{now_unix, ShellMaterializeReceipt};
 
@@ -234,7 +234,12 @@ pub fn materialize_shell(
     let mut total_shell_bytes: u64 = 0;
     let num_unique_tokens = agent_tokens.len() as u32;
 
-    for layer_idx in 0..num_layers {
+    // Build a closure that produces one ShellLayer. Each layer is
+    // independent (different head/data ranges in the agent corpus), so
+    // we can dispatch them in parallel via Rayon when the feature is
+    // enabled. Layers are collected by index to preserve order in the
+    // output (we collect by index, not by completion time).
+    let build_layer = |layer_idx: usize| -> Result<(ShellLayer, u64)> {
         // Collect every (token, head) K and V vector for this layer up
         // front, then dispatch two batched encodes (one for K, one for V).
         // The TQB1 batched path produces a single bytes blob per side
@@ -261,21 +266,21 @@ pub fn materialize_shell(
         let encoded_values = turbo_adapter.encode_batch_compact(&value_refs, seed)?;
 
         // Pick the codec id for this shell based on the policy's
-        // radii_compression flag. Both ids share the same on-disk
-        // structure (one batched block per K/V per layer); the difference
-        // is in how radii are encoded INSIDE the block. The decoder
-        // dispatches on the id and reads the wire's radii_codec byte.
-        let shell_codec_id = match pool.policy.turbo_config.radii_compression {
-            crate::policy::RadiiCompression::Lossless => CODEC_TURBO_8BIT_BATCHED,
-            crate::policy::RadiiCompression::Lossy => CODEC_TURBO_8BIT_BATCHED_LOSSY,
-        };
+        // `bits` and `radii_compression` fields. Both ids share the same
+        // on-disk structure (one batched block per K/V per layer); the
+        // difference is in how radii are encoded INSIDE the block. The
+        // decoder dispatches on the id and reads the wire's bits/radii
+        // bytes.
+        let lossy_radii = matches!(
+            pool.policy.turbo_config.radii_compression,
+            crate::policy::RadiiCompression::Lossy
+        );
+        let shell_codec_id = turbo_batched_codec_id(pool.policy.turbo_config.bits, lossy_radii);
         let key_block = CompressedBlock::new(shell_codec_id.to_string(), encoded_keys, head_dim);
         let value_block =
             CompressedBlock::new(shell_codec_id.to_string(), encoded_values, head_dim);
 
-        total_shell_bytes += key_block.compressed_bytes as u64;
-        total_shell_bytes += value_block.compressed_bytes as u64;
-
+        let layer_bytes = key_block.compressed_bytes as u64 + value_block.compressed_bytes as u64;
         let key_blocks = vec![key_block];
         let value_blocks = vec![value_block];
 
@@ -286,6 +291,25 @@ pub fn materialize_shell(
             block_digest: String::new(),
         };
         layer.block_digest = layer.compute_digest()?;
+        Ok((layer, layer_bytes))
+    };
+
+    // Layer build: serial or parallel. Both paths preserve layer order
+    // in the output (we collect by index, not by completion time).
+    let layer_results: Vec<Result<(ShellLayer, u64)>> = {
+        #[cfg(feature = "parallel_shell")]
+        {
+            use rayon::prelude::*;
+            (0..num_layers).into_par_iter().map(build_layer).collect()
+        }
+        #[cfg(not(feature = "parallel_shell"))]
+        {
+            (0..num_layers).map(build_layer).collect()
+        }
+    };
+    for r in layer_results {
+        let (layer, layer_bytes) = r?;
+        total_shell_bytes += layer_bytes;
         unique_layers.push(layer);
     }
 

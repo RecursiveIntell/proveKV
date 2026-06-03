@@ -29,18 +29,88 @@ pub fn is_batched_fib(codec_id: &str) -> bool {
 }
 
 /// True when the codec id is a batched (TQB1) turbo variant (lossless).
+///
+/// Accepts all bit rates (2..=16) for forward-compat: matches
+/// `turbo_<N>bit_batched` for any valid N. Does NOT match the `_lossy`
+/// variant — use `is_batched_turbo_lossy` for that.
 pub fn is_batched_turbo(codec_id: &str) -> bool {
-    matches!(codec_id, CODEC_TURBO_8BIT_BATCHED)
+    if codec_id == CODEC_TURBO_8BIT_BATCHED {
+        return true;
+    }
+    // `turbo_<N>bit_batched` (no `_lossy` suffix).
+    let Some(bits) = parse_turbo_bits_batched(codec_id, false) else {
+        return false;
+    };
+    (2..=16).contains(&bits)
 }
 
 /// True when the codec id is the lossy batched turbo variant (TQB1-L).
+///
+/// Accepts all bit rates (2..=16) with the `_batched_lossy` suffix.
 pub fn is_batched_turbo_lossy(codec_id: &str) -> bool {
-    matches!(codec_id, CODEC_TURBO_8BIT_BATCHED_LOSSY)
+    if codec_id == CODEC_TURBO_8BIT_BATCHED_LOSSY {
+        return true;
+    }
+    let Some(bits) = parse_turbo_bits_batched(codec_id, true) else {
+        return false;
+    };
+    (2..=16).contains(&bits)
 }
 
 /// True if this codec id is any batched variant (either fib or turbo).
 pub fn is_batched_codec(codec_id: &str) -> bool {
     is_batched_fib(codec_id) || is_batched_turbo(codec_id)
+}
+
+/// Parse `turbo_<N>bit_batched[_lossy]` (NOT the legacy `turbo_<N>bit` form).
+/// Returns the bit rate N if the id has the right structure and the lossy
+/// flag matches.
+fn parse_turbo_bits_batched(codec_id: &str, lossy: bool) -> Option<u8> {
+    let rest = codec_id.strip_prefix("turbo_")?;
+    let bits_end = rest.find("bit")?;
+    let n: u8 = rest[..bits_end].parse().ok()?;
+    let tail = &rest[bits_end + 3..];
+    let expected = if lossy { "_batched_lossy" } else { "_batched" };
+    (tail == expected).then_some(n)
+}
+
+/// Build the batched turbo codec id for a given bit rate and radii codec.
+pub fn turbo_batched_codec_id(bits: u8, lossy_radii: bool) -> String {
+    debug_assert!((2..=16).contains(&bits), "turbo bits must be 2..=16");
+    let suffix = if lossy_radii { "_lossy" } else { "" };
+    format!("turbo_{bits}bit_batched{suffix}")
+}
+
+/// Static, lazily-built list of every legal shell codec id. Includes the
+/// canonical `turbo_8bit_batched` and `turbo_8bit_batched_lossy` plus every
+/// `turbo_<N>bit_batched[_lossy]` for N in 2..=16.
+pub static ALLOWED_SHELL_CODECS: std::sync::OnceLock<Vec<&'static str>> =
+    std::sync::OnceLock::new();
+
+/// Get (or initialize) the list of legal shell codec ids.
+pub fn allowed_shell_codecs() -> &'static [&'static str] {
+    ALLOWED_SHELL_CODECS.get_or_init(|| {
+        let mut ids: Vec<&'static str> = vec![
+            CODEC_TURBO_8BIT,
+            CODEC_TURBO_8BIT_BATCHED,
+            CODEC_TURBO_8BIT_BATCHED_LOSSY,
+            CODEC_EXACT_FALLBACK,
+        ];
+        for bits in 2u8..=16 {
+            // Leak the formatted ids: they live for the program lifetime
+            // and the count is bounded (15 * 2 = 30 strings). Acceptable
+            // for a validation table; avoids reallocating per validate().
+            let lossless: &'static str =
+                Box::leak(turbo_batched_codec_id(bits, false).into_boxed_str());
+            let lossy: &'static str =
+                Box::leak(turbo_batched_codec_id(bits, true).into_boxed_str());
+            if bits != 8 {
+                ids.push(lossless);
+                ids.push(lossy);
+            }
+        }
+        ids
+    })
 }
 
 /// FibQuant configuration parameters.
@@ -242,12 +312,7 @@ impl CompressionPolicy {
                 self.shared_codec
             )));
         }
-        let allowed_shell = [
-            CODEC_TURBO_8BIT,
-            CODEC_TURBO_8BIT_BATCHED,
-            CODEC_TURBO_8BIT_BATCHED_LOSSY,
-            CODEC_EXACT_FALLBACK,
-        ];
+        let allowed_shell: &'static [&'static str] = allowed_shell_codecs();
         if !allowed_shell.contains(&self.shell_codec.as_str()) {
             return Err(ProveKvError::InvalidPolicy(format!(
                 "shell_codec must be one of {:?}, got '{}'",
@@ -290,5 +355,44 @@ mod tests {
         let mut config = TurboConfig::default_8bit();
         config.bits = 1;
         assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_turbo_batched_codec_id_format() {
+        assert_eq!(turbo_batched_codec_id(8, false), "turbo_8bit_batched");
+        assert_eq!(turbo_batched_codec_id(8, true), "turbo_8bit_batched_lossy");
+        assert_eq!(turbo_batched_codec_id(4, false), "turbo_4bit_batched");
+        assert_eq!(turbo_batched_codec_id(2, false), "turbo_2bit_batched");
+        assert_eq!(turbo_batched_codec_id(16, true), "turbo_16bit_batched_lossy");
+    }
+
+    #[test]
+    fn test_is_batched_turbo_accepts_all_bit_rates() {
+        for bits in 2u8..=16 {
+            let id = turbo_batched_codec_id(bits, false);
+            assert!(is_batched_turbo(&id), "lossless {bits}bit should be batched turbo");
+            let id_lossy = turbo_batched_codec_id(bits, true);
+            assert!(
+                is_batched_turbo_lossy(&id_lossy),
+                "lossy {bits}bit should be batched turbo lossy"
+            );
+            // The lossy id should NOT match the lossless predicate.
+            assert!(!is_batched_turbo(&id_lossy), "lossy {bits}bit should NOT match lossless");
+            // And the lossless id should NOT match the lossy predicate.
+            assert!(!is_batched_turbo_lossy(&id), "lossless {bits}bit should NOT match lossy");
+        }
+    }
+
+    #[test]
+    fn test_policy_accepts_non_8bit_batched() {
+        // 4bit lossless should validate and the codec id should match.
+        let mut policy = CompressionPolicy::default_two_tier();
+        policy.turbo_config.bits = 4;
+        policy.shell_codec = turbo_batched_codec_id(4, false);
+        assert!(policy.validate().is_ok(), "4bit lossless policy must validate");
+        // 4bit lossy should also validate.
+        policy.turbo_config.radii_compression = crate::policy::RadiiCompression::Lossy;
+        policy.shell_codec = turbo_batched_codec_id(4, true);
+        assert!(policy.validate().is_ok(), "4bit lossy policy must validate");
     }
 }

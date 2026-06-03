@@ -23,10 +23,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use prove_kv::policy::{
-    CompressionPolicy, RadiiCompression, TurboConfig, CODEC_FIB_K4_N32_BATCHED,
-    CODEC_TURBO_8BIT_BATCHED, CODEC_TURBO_8BIT_BATCHED_LOSSY,
-};
+use prove_kv::policy::{CompressionPolicy, RadiiCompression, CODEC_FIB_K4_N32_BATCHED};
 use prove_kv::shape::{AttentionType, KvTensorShape};
 use prove_kv::SharedKVPool;
 use serde::{Deserialize, Serialize};
@@ -127,12 +124,23 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
         eprintln!(
-            "usage: {} <input.json> <output_dir> [--lossy]",
+            "usage: {} <input.json> <output_dir> [--lossy] [--bits N]",
             args[0]
         );
         std::process::exit(1);
     }
     let lossy = args.iter().any(|a| a == "--lossy");
+    // Parse --bits N. Default 8 (the benchmark-proven setting).
+    let bits: u8 = match args.iter().position(|a| a == "--bits") {
+        Some(i) if i + 1 < args.len() => args[i + 1]
+            .parse()
+            .expect("--bits value must be a u8 in [2, 16]"),
+        _ => 8,
+    };
+    if !(2..=16).contains(&bits) {
+        eprintln!("--bits must be in [2, 16], got {bits}");
+        std::process::exit(1);
+    }
     let input_path = PathBuf::from(&args[1]);
     let output_dir = PathBuf::from(&args[2]);
     fs::create_dir_all(&output_dir).expect("create output dir");
@@ -161,12 +169,12 @@ fn main() {
 
     // Build the compression policy.
     let mut policy = CompressionPolicy::default_two_tier();
+    // Override the shell tier's bits if --bits was provided. The fib tier
+    // is unaffected (it doesn't use turbo). The default_two_tier shell codec
+    // is `turbo_<bits>bit_batched` (or _lossy variant).
+    policy.turbo_config.bits = bits;
     if lossy {
-        policy.turbo_config = TurboConfig {
-            bits: 8,
-            projections: 32,
-            radii_compression: RadiiCompression::Lossy,
-        };
+        policy.turbo_config.radii_compression = RadiiCompression::Lossy;
     }
 
     // Build the pool from the shared tokens.
@@ -230,10 +238,13 @@ fn main() {
     .expect("write shared pool receipt");
 
     // Build shells for each agent, decode them, write per-agent kv bins.
+    // The shell codec id reflects the policy's bit rate and radii
+    // compression. Per-agent receipts read this from the block, but the
+    // top-level `state.shell_codec` field is derived here.
     let shell_codec_str = if lossy {
-        CODEC_TURBO_8BIT_BATCHED_LOSSY
+        format!("turbo_{bits}bit_batched_lossy")
     } else {
-        CODEC_TURBO_8BIT_BATCHED
+        format!("turbo_{bits}bit_batched")
     };
 
     let mut per_agent = Vec::with_capacity(input.agents.len());

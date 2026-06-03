@@ -27,10 +27,14 @@ rayon = "1.10"
 # Default: fib cold tier + turbo hot tier. Both tiers compiled. The compact
 # binary wire format is used for both (fib's "FB1" magic and turbo's "TQW1"
 # magic). See proveKV/src/codec.rs for the encode/decode paths.
-default = ["fib", "turbo", "parallel_pool"]
+default = ["fib", "turbo", "parallel_pool", "parallel_shell"]
 fib = ["fib-quant"]
 turbo = ["turbo-quant"]
+# Parallelize the per-layer shell build loop. Default ON; turn off
+# only for single-threaded benchmarking or to compare against the
+# serial baseline.
 parallel_pool = ["fib-quant?/parallel"]
+parallel_shell = []
 
 [dev-dependencies]
 proptest = "1"

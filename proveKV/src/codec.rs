@@ -304,23 +304,20 @@ impl TurboQuantAdapter {
             ))
         })?;
 
-        let polar_quant = turbo_quant::PolarQuantizer::new(self.dim, self.bits - 1, seed)
-            .map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "turbo polar quantizer init failed: {e}"
-                ))
-            })?;
-
-        let mut out = Vec::with_capacity(codes.len());
-        for code in &codes {
-            let reconstructed = polar_quant.decode(&code.polar_code).map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "turbo decode failed: {e}"
-                ))
-            })?;
-            out.push(reconstructed);
-        }
-        Ok(out)
+        // Use the quantizer's batch decode (PolarQuantizer::decode_batch
+        // → RotationBackend::apply_inverse_batch). Same numerical output
+        // as the per-vec loop, but amortizes the per-call branch /
+        // lookup overhead and keeps the rotation's signs (or matrix) hot
+        // in cache across the whole batch. The quantizer is constructed
+        // with the right mode from `self.bits`/`self.projections`, so
+        // the polar-code bit count it produces is correct for both
+        // PolarOnly and PolarWithQjl modes (avoiding the previous
+        // hard-coded `bits - 1` which only matched PolarWithQjl).
+        quantizer.decode_approximate_batch(&codes).map_err(|e| {
+            crate::error::ProveKvError::DecompressionFailed(format!(
+                "turbo batch decode failed: {e}"
+            ))
+        })
     }
 }
 
