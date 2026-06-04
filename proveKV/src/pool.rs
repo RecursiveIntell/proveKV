@@ -213,6 +213,30 @@ impl SharedKVPool {
         // so we don't pay for rebuilding it.
         let codec: Box<dyn crate::codec::KVecCodec> = Box::new(fib_adapter);
 
+        // F5: compute the real codebook/rotation digests ONCE at the top of
+        // pool build (the codebook and rotation are deterministic functions
+        // of the seed, head_dim, k, n, training config — they do not vary
+        // across layers). Building a FibQuantizer here to read the digest
+        // is cheap relative to the actual encoding work below and is the
+        // only way to populate these fields with non-empty, trustworthy
+        // values. PoolBuildReceipt's contract now requires non-empty
+        // codebook_digest and rotation_digest, so we cannot ship empty
+        // strings here. We use the concrete FibQuantAdapter (not the trait
+        // object) because `build_quantizer` is an inherent method.
+        let (codebook_digest, rotation_digest) = {
+            let quantizer = fib_adapter.build_quantizer(seed).map_err(|e| {
+                ProveKvError::CompressionFailed(format!(
+                    "fib quantizer build for digest failed: {}",
+                    e
+                ))
+            })?;
+            let cb = quantizer.codebook();
+            (
+                cb.codebook_digest.clone(),
+                cb.rotation_digest.clone(),
+            )
+        };
+
         let mut layers: Vec<PoolLayer> = Vec::with_capacity(num_layers);
         let mut total_compressed_bytes: u64 = 0;
 
@@ -291,8 +315,23 @@ impl SharedKVPool {
 
         // Compute pool digest
         let layer_digests: Vec<String> = layers.iter().map(|l| l.block_digest.clone()).collect();
+        // F5: pool_id must bind the codebook and rotation lineage, not just
+        // the per-layer payload digests. Two pools built with the same
+        // (shape, seed, corpus) but different codebooks would otherwise
+        // hash to the same pool_id if the per-layer digests happened to
+        // collide. (Today the codebook is fully determined by the seed, so
+        // the same seed always gives the same codebook; but the manifest's
+        // job is to bind that lineage, not to assume it.)
+        let pool_id_material = serde_json::json!({
+            "layer_digests": &layer_digests,
+            "codebook_digest": &codebook_digest,
+            "rotation_digest": &rotation_digest,
+            "shape": &shape,
+            "seed": seed,
+            "shared_codec": policy.shared_codec,
+        });
         let pool_id = blake3::hash(
-            serde_json::to_string(&layer_digests)
+            serde_json::to_string(&pool_id_material)
                 .map_err(|e| ProveKvError::Internal(format!("pool_id hash: {}", e)))?
                 .as_bytes(),
         )
@@ -326,8 +365,8 @@ impl SharedKVPool {
         let receipt = PoolBuildReceipt::new(
             pool_id,
             layer_digests,
-            String::new(), // codebook_digest — not exposed at this level
-            String::new(), // rotation_digest — not exposed at this level
+            codebook_digest,
+            rotation_digest,
             num_tokens as u32,
             fib_build_ms,
             total_compressed_bytes,
@@ -689,6 +728,58 @@ mod tests {
             assert_eq!(layer.key_blocks[0].codec, layer.value_blocks[0].codec);
         }
         assert_eq!(pool.manifest.shared_codec, crate::policy::CODEC_FIB_K4_N32_BATCHED);
+    }
+
+    /// F5: the pool receipt must carry non-empty codebook/rotation digests.
+    /// This guards against the F5 bug where `String::new()` was passed and
+    /// the receipt's provenance claim was a lie.
+    #[test]
+    fn test_pool_receipt_has_real_codebook_and_rotation_digests() {
+        let shape = make_test_shape();
+        let corpus = make_test_corpus(8);
+        let (_pool, receipt) = SharedKVPool::build(&corpus, &shape, 42).unwrap();
+        assert!(
+            !receipt.codebook_digest.is_empty(),
+            "codebook_digest must be populated (audit F5)"
+        );
+        assert!(
+            !receipt.rotation_digest.is_empty(),
+            "rotation_digest must be populated (audit F5)"
+        );
+        // They should be a real hash, not the empty placeholder. The fib
+        // codec produces 71-char base64 digests, so the safe check is
+        // "non-empty and longer than the schema-name prefix a real digest
+        // would never have." 32 chars minimum, no whitespace.
+        assert!(
+            receipt.codebook_digest.len() >= 32
+                && !receipt.codebook_digest.contains(' '),
+            "codebook_digest should be a real hash (>=32 chars, no whitespace), got '{}'",
+            receipt.codebook_digest
+        );
+        assert!(
+            receipt.rotation_digest.len() >= 32
+                && !receipt.rotation_digest.contains(' '),
+            "rotation_digest should be a real hash (>=32 chars, no whitespace), got '{}'",
+            receipt.rotation_digest
+        );
+    }
+
+    /// F5: digests must be deterministic in the seed (and only the seed).
+    /// The codebook + rotation are deterministic functions of the
+    /// (head_dim, k, n, training config, seed) inputs, so two pools built
+    /// with the same seed must produce identical digests. Two pools built
+    /// with different seeds must produce different digests.
+    #[test]
+    fn test_pool_digests_are_seed_deterministic() {
+        let shape = make_test_shape();
+        let corpus_a = make_test_corpus(8);
+        let corpus_b = make_test_corpus(8);
+        let (_p1, r1) = SharedKVPool::build(&corpus_a, &shape, 42).unwrap();
+        let (_p2, r2) = SharedKVPool::build(&corpus_b, &shape, 42).unwrap();
+        assert_eq!(r1.codebook_digest, r2.codebook_digest);
+        assert_eq!(r1.rotation_digest, r2.rotation_digest);
+        let (_p3, r3) = SharedKVPool::build(&corpus_a, &shape, 43).unwrap();
+        assert_ne!(r1.codebook_digest, r3.codebook_digest);
     }
 
     /// End-to-end test: build a batched pool, materialize a batched shell,

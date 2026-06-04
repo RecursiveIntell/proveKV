@@ -110,6 +110,21 @@ impl PoolBuildReceipt {
                 "pool_digest is empty".into(),
             ));
         }
+        // F5: the receipt's provenance claim is not just a label. Refuse
+        // receipts that have empty codebook/rotation digests — that's the
+        // pre-F5 bug we're guarding against. Pool build always populates
+        // these now, so any receipt with empty digests is either pre-F5
+        // (rebuild it) or hand-crafted (reject it).
+        if self.codebook_digest.is_empty() {
+            return Err(crate::error::ProveKvError::InvalidReceipt(
+                "codebook_digest is empty (pre-F5 receipt, must rebuild)".into(),
+            ));
+        }
+        if self.rotation_digest.is_empty() {
+            return Err(crate::error::ProveKvError::InvalidReceipt(
+                "rotation_digest is empty (pre-F5 receipt, must rebuild)".into(),
+            ));
+        }
         Ok(())
     }
 
