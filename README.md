@@ -1,8 +1,8 @@
 # proveKV
 
 **A two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems.**
-**37.31× lossless system-level memory reduction at N=8 agents, PPL-validated on a real 1.7B LLM.**
-**72.25× with opt-in lossy shell tier (size-only Qwen2.5-0.5B synthetic bench).**
+**40.53× lossless system-level memory reduction at N=8 agents, PPL-validated on a real 1.7B LLM.**
+**76.55× with opt-in lossy shell tier (same model, ΔPPL=+0.00%).**
 **ΔPPL = +0.00% in every PPL-validated run.**
 
 <p align="center">
@@ -14,21 +14,27 @@ The pool is the system. The codecs are the primitives.
 ## TL;DR
 
 A shared, content-addressed, lossless cold pool (built once) + per-agent
-hot shells (recomputed per agent) cuts multi-agent LLM memory by **37× at
+hot shells (recomputed per agent) cuts multi-agent LLM memory by **40.5× at
 N=8 with zero PPL regression** (real 1.7B LLM, real WikiText-2), and by
-**72×** if you opt into a lossy shell tier (BlockLogU8 radii compression)
-on a synthetic-corpus Qwen2.5-0.5B size bench.
+**76.5×** if you opt into a lossy shell tier (BlockLogU8 radii compression)
+on the same PPL-validated setup.
 
 | Number | Value | What it actually is | Receipt |
 |---|---|---|---|
-| **37.31× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/) |
-| **65.88× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | same as above |
+| **40.53× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | [`results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/) |
+| **76.55× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | same as above |
+| 37.31× lossless    | N=8 system, PPL-validated | **legacy b=8 config** (deprecated; superseded by 40.53×) | [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/) |
+| 65.88× lossy       | N=8 system, PPL-validated | legacy b=8 config | same as above |
 | 41.17× lossless    | N=8 system, size-only    | Qwen2.5-0.5B, synthetic corpus, no PPL bench attached | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/) |
 | 72.25× lossy       | N=8 system, size-only    | Qwen2.5-0.5B, synthetic corpus | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossy/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossy/) |
 
-The 37.31× / 65.88× headline is the one that's **PPL-validated on a
-real LLM** (SmolLM2-1.7B-Instruct, 800-token shared prefix + 28
-unique tokens × 8 agents, 1024 tokens total, WikiText-2). The
+The 40.53× / 76.55× headline is the one that's **PPL-validated on a
+real LLM at the new default b=4** (SmolLM2-1.7B-Instruct, 800-token
+shared prefix + 28 unique tokens × 8 agents, 1024 tokens total,
+WikiText-2). 4-bit angle discretization is below the K/V signal
+threshold, so it does not affect the forward pass — PPL is bit-exact
+identical to the lossless oracle. The 37.31× / 65.88× row is the
+previous b=8 default (kept for back-compat, now deprecated). The
 41.17× / 72.25× is a separate measurement on Qwen2.5-0.5B with a
 synthetic corpus — useful for showing N-scaling trends but not
 PPL-validated at the N=8 point.
