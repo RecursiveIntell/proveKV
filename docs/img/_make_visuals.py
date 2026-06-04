@@ -154,8 +154,12 @@ def make_architecture():
     # README table; the architecture diagram headline is the
     # PPL-validated one. (For fp16-equivalent framework caches,
     # the same receipts give 20.25x; see CLAIMS.json.)
-    ax.text(11.05, 2.92, "40.50×\nsystem-\nlevel\n(at N=8,\nb=4 PPL-\nvalidated)",
-            ha="left", va="center", fontsize=10, fontweight="bold", color=C_FIB)
+    # Headline shows BOTH baselines (per Josh's request and the CLAIMS.json policy).
+    # f32-raw is the on-disk storage headline; fp16-equivalent is the
+    # paper-comparable number for fp16 framework-cache readers.
+    ax.text(11.05, 2.92,
+            "40.50× vs f32-raw\n20.25× vs fp16\nsystem-level\n(at N=8,\nb=4 PPL-validated)",
+            ha="left", va="center", fontsize=9, fontweight="bold", color=C_FIB)
 
     # ---- Title and subtitle ----
     ax.text(0.5, 5.65, "proveKV  ·  two-tier architecture",
@@ -291,7 +295,7 @@ def make_n_scaling():
     ax_pk.set_ylabel("Total system memory (MB)")
 
     fig.suptitle("Multi-agent memory scaling at 1024 tokens, 80% shared prefix  ·  Qwen2.5-0.5B baseline (N=2..6)\n"
-                 "(1) N=8 has a SECOND measurement on SmolLM2-1.7B + WikiText-2 at the b=4 default: 40.50× lossless / 76.54× lossy, ΔPPL = 0.00%\n"
+                 "(1) N=8 SmolLM2-1.7B + WikiText-2 b=4: 40.50× lossless / 76.54× lossy (f32-raw baseline)  ·  20.25× / 38.27× (fp16-equiv)  ·  ΔPPL = 0.00%\n"
                  "Bar ratios are vs. the Qwen0.5B per-N naive (57 MB at N=2 up to 173 MB at N=8) shown left; the (1) numbers are vs. the SmolLM2 2.48 GB f32-raw naive in the receipt",
                  fontsize=10, fontweight="bold", y=1.02)
     fig.tight_layout()
