@@ -32,8 +32,8 @@
         "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 40.5287,
-      "ratio_vs_fp16_kv": 20.2644,
+      "ratio_vs_f32_raw": 40.5040,
+      "ratio_vs_fp16_kv": 20.2520,
       "raw_total_bytes": 2604662784,
       "compressed_total_bytes": 64306320,
       "pool_bytes": 14746512,
@@ -57,8 +57,8 @@
         "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/shell_output_lossy/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 76.5452,
-      "ratio_vs_fp16_kv": 38.2726,
+      "ratio_vs_f32_raw": 76.5431,
+      "ratio_vs_fp16_kv": 38.2716,
       "raw_total_bytes": 2604662784,
       "compressed_total_bytes": 34028688,
       "pool_bytes": 14746512,

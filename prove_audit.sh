@@ -31,7 +31,18 @@ assert c['schema_version'] == '1.0.0', f\"unexpected schema: {c['schema_version'
 for name, claim in c['claims'].items():
     assert 'receipts' in claim, f\"{name}: no receipts\"
     assert 'claim_status' in claim, f\"{name}: no claim_status\"
-print(f\"OK: {len(c['claims'])} claims validated\")
+    # F1/F2 audit: if the claim has raw/compressed bytes, the ratio_vs_f32_raw
+    # and ratio_vs_fp16_kv must be derivable from those bytes, not hand-edited.
+    if 'raw_total_bytes' in claim and 'compressed_total_bytes' in claim:
+        derived_f32 = claim['raw_total_bytes'] / claim['compressed_total_bytes']
+        derived_fp16 = derived_f32 / 2
+        declared_f32 = claim['ratio_vs_f32_raw']
+        declared_fp16 = claim['ratio_vs_fp16_kv']
+        if abs(derived_f32 - declared_f32) > 0.001:
+            raise AssertionError(f\"{name}: ratio_vs_f32_raw {declared_f32} != derived {derived_f32:.4f}\")
+        if abs(derived_fp16 - declared_fp16) > 0.001:
+            raise AssertionError(f\"{name}: ratio_vs_fp16_kv {declared_fp16} != derived {derived_fp16:.4f}\")
+print(f'OK: {len(c[\"claims\"])} claims validated, all byte-derived ratios are consistent')
 "
 
 echo ""
