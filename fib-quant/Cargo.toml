@@ -1,13 +1,13 @@
 [package]
 name = "fib-quant"
-version = "0.1.0-alpha.3"
+version = "0.1.0-beta.1"
 edition = "2021"
 rust-version = "1.75"
 description = "Experimental Rust implementation of the FibQuant radial-angular vector quantization core"
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/RecursiveIntill/proveKV"
-homepage = "https://github.com/RecursiveIntill/proveKV"
+repository = "https://github.com/RecursiveIntell/proveKV"
+homepage = "https://github.com/RecursiveIntell/proveKV"
 documentation = "https://docs.rs/fib-quant"
 keywords = ["quantization", "vector", "kv-cache", "llm", "compression"]
 categories = ["compression", "science", "algorithms"]

@@ -1,11 +1,11 @@
 [package]
 name = "provekv"
-version = "0.1.0-alpha.3"
+version = "0.1.0-beta.1"
 edition = "2021"
 rust-version = "1.75"
 description = "proveKV — two-tier, receipted, content-addressed KV-cache pool. fib_k4_n32 cold tier + turbo_8bit hot tier. The pool is the system; the codecs are the primitives."
 license = "MIT"
-repository = "https://github.com/RecursiveIntill/proveKV"
+repository = "https://github.com/RecursiveIntell/proveKV"
 readme = "README.md"
 include = [
     "Cargo.toml",
@@ -30,7 +30,7 @@ rand = "0.8"
 rand_chacha = "0.3"
 thiserror = "2"
 
-fib-quant = { version = "0.1.0-alpha.3", optional = true }
+fib-quant = { version = "0.1.0-beta.1", optional = true }
 turbo-quant = { version = "0.2.2", optional = true }
 rayon = "1.10"
 
