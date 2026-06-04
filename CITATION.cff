@@ -1,9 +1,14 @@
 cff-version: 1.2.0
-message: "If you reference this measurement in academic work, please cite it as below."
+message: "If you reference this measurement in academic work, please cite it as below. Note: the headline numbers are PPL-validated ratios vs f32-raw KV bytes; the codec wire formats are lossless with respect to the encoded codec artifacts. See CLAIMS.json for the per-baseline ratio breakdown and the receipts that justify each number."
 type: software
-title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool — lossless at 11.13x on a real 1.7B-parameter LLM"
-version: 1.0.0
-date-released: 2026-06-02
+# F7 audit: the title previously said "lossless at 11.13x", which was the
+# pool-only lossless ratio from the older `kv-lossless-11x` work. The
+# current default is two-tier (pool + per-agent shells) at the b=4
+# default: 40.53x lossless and 76.55x lossy, both PPL-validated on
+# SmolLM2-1.7B + WikiText-2 with delta_ppl_pct = +0.00% (msi 2026-06-03).
+title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems — 40.53x lossless / 76.55x lossy PPL-validated at N=8"
+version: 1.1.0
+date-released: 2026-06-03
 license: MIT
 authors:
   - family-names: Stevenson
@@ -23,6 +28,9 @@ references:
     identifier: "arXiv:2605.11478"
     url: "https://arxiv.org/abs/2605.11478"
   - type: software
-    title: "fib-quant: clean-room Rust port of the FibQuant codec"
-    version: "0.1.0-alpha.1"
-    url: "https://github.com/RecursiveIntell/Libraries/tree/main/fib-quant"
+    # F7 audit: the previous version pointed to RecursiveIntill/Libraries
+    # (typo) and the fib-quant path inside it. The codec actually lives
+    # in this same repo as a workspace member.
+    title: "fib-quant: clean-room Rust port of the FibQuant codec (workspace member of proveKV)"
+    version: "0.1.0-beta.1"
+    url: "https://github.com/RecursiveIntell/proveKV/tree/main/fib-quant"

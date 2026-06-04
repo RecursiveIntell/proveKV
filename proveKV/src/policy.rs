@@ -129,7 +129,11 @@ pub struct FibConfig {
 }
 
 impl FibConfig {
-    /// The benchmark-proven configuration: k=4, N=32, 50× compression with 100% recall.
+    /// The benchmark-proven configuration: k=4, N=32. The fib codec is a
+    /// codebook-based vector quantizer — reconstruction is bounded by the
+    /// k=4 codebook resolution, NOT bit-exact lossless. PPL-validated
+    /// claim: 21.33x pool-tier ratio at this config on SmolLM2-1.7B with
+    /// `delta_ppl_pct = +0.00%` (msi 2026-06-03). See CLAIMS.json.
     pub fn default_k4_n32() -> Self {
         Self {
             k: 4,
@@ -300,9 +304,22 @@ impl TurboConfig {
 
 /// Hard-coded two-tier compression policy.
 ///
-/// Derived from empirical benchmarks run on 2026-06-01:
-/// - Shared pool (cold tier): fib-quant at k=4, N=32 → 50× compression, 100% recall
-/// - Agent shells (hot tier): turbo-quant at 8-bit → 8× compression, 99.9% score retention
+/// All ratios in this module are PPL-validated on SmolLM2-1.7B +
+/// WikiText-2 at N=8 agents, 800 shared + 28×8 unique tokens, 1024
+/// tokens total (msi 2026-06-03, `delta_ppl_pct = +0.00%`).
+///
+/// Note: "lossless" in this codebase refers to the shell tier's radii
+/// profile (no BlockLogU8 quantization). The fib cold tier is a
+/// codebook-based vector quantizer — reconstruction is bounded by the
+/// k=4 codebook resolution, NOT bit-exact lossless. See CLAIMS.json
+/// for the per-baseline ratio breakdown and the receipts that justify
+/// each number.
+///
+/// - Shared pool (cold tier): fib-quant at k=4, N=32 → 21.33× pool
+///   ratio (vs f32-raw KV baseline)
+/// - Agent shells (hot tier): turbo-quant at b=4 (default) → 40.53×
+///   system lossless / 76.55× system lossy at N=8 (vs f32-raw KV
+///   baseline). At the legacy b=8 config, the system was 37.31× / 65.88×.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompressionPolicy {
     /// Codec used for the shared pool (cold tier).
