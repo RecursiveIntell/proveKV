@@ -7,5 +7,8 @@ results/bench/multi_agent_compact/**/shared_kv.bin
 results/bench/multi_agent_compact/**/agent_*_kv.bin
 turbo-quant/AGENTS.md
 target/
-Cargo.lock
+# Cargo.lock is tracked for this benchmark/measurement repo. The audit
+# (F6) required it: benchmark claims must be reproducible against a
+# locked dependency set, not whatever registry version happens to resolve
+# at bench time.
 **/*.rs.bak

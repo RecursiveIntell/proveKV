@@ -30,8 +30,8 @@ rand = "0.8"
 rand_chacha = "0.3"
 thiserror = "2"
 
-fib-quant = { version = "0.1.0-beta.1", optional = true }
-turbo-quant = { version = "0.2.2", optional = true }
+fib-quant = { workspace = true, optional = true }
+turbo-quant = { workspace = true, optional = true }
 rayon = "1.10"
 
 [features]

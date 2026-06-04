@@ -2,6 +2,17 @@
 members = ["fib-quant", "proveKV", "quant-codec-core", "gpu-backend", "turbo-quant"]
 resolver = "2"
 
+# F6 audit fix: workspace-local crates must be referenced by `path`, not
+# `version`. Otherwise `cargo build` inside this workspace can resolve
+# fib-quant/turbo-quant/gpu-backend to a *registry* version that may
+# differ from the local source, silently making benchmark claims about
+# the local code instead of the code that actually ships. These path
+# references are the source-of-truth guarantee the audit demanded.
+[workspace.dependencies]
+fib-quant = { path = "fib-quant", version = "0.1.0-beta.1" }
+turbo-quant = { path = "turbo-quant", version = "0.2.2" }
+gpu-backend = { path = "gpu-backend", version = "0.1.0-alpha.1" }
+
 [profile.release]
 opt-level = 3
 lto = "thin"
