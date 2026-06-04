@@ -29,6 +29,15 @@ the uncompressed same-context KV cache baseline." All byte counts
 are measured, not projected. Pick the row that matches your
 framework's cache dtype:
 
+> **Note on the naive baseline.** The geometric fp16 K/V cache
+> (8 × 201,326,592 B = 1,610,612,736 B) is smaller than the
+> receipt's `raw_total_bytes` (2,604,662,784 B) by a factor of
+> 1.62×, so a reviewer who computes the geometric naive gets
+> **25.05× lossless / 47.33× lossy** instead of the 40.50× / 76.54×
+> headlines. The discrepancy is documented at
+> [`docs/methodology/naive_computation.md`](docs/methodology/naive_computation.md);
+> both ratios are honest measurements against different baselines.
+
 | Baseline | Lossless | Lossy | Notes |
 |---|---|---|---|
 | **vs f32-raw KV** (4 B/elem) | **40.50×** | **76.54×** | On-disk storage baseline. Same-context uncompressed f32 K/V bytes. |
@@ -650,6 +659,7 @@ rate. That is a paper-level claim, not one we've reproduced here.
 5. [`results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json`](results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json)
    — the wall-clock bench proving the batch decode path is 1.4-1.5× *slower* than per-vec (the basis for the "do not quote a batch-decode speedup" non-claim in CLAIMS.json)
 6. [`CLAIMS.json`](CLAIMS.json) — the single source of truth for every numerical claim in this README. Every ratio is derived from `raw_total_bytes` / `compressed_total_bytes` and asserted by `prove_audit.sh`. Do not hand-edit numbers; update the receipts and re-derive.
+6.1. [`docs/methodology/naive_computation.md`](docs/methodology/naive_computation.md) — explains the gap between the geometric 25× / 47× naive and the receipt 40× / 76× naive. **Read this before posting to a hostile forum.**
 7. [`proveKV/scripts/ppl_validate.py`](proveKV/scripts/ppl_validate.py)
    — the methodology (locked; do not deviate without updating
    the methodology in this README too)

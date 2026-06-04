@@ -1,7 +1,6 @@
 {
   "schema_version": "1.0.0",
   "claim_status": "F1/F2 audit fix. This file is the SINGLE SOURCE OF TRUTH for every numerical claim in README.md, CITATION.cff, and the crate docstrings. Hand-maintained numbers in those files are prohibited. Generated: 2026-06-03.",
-
   "baselines": {
     "f32_raw": {
       "description": "Same-context f32 K/V bytes (4 bytes per element). The denominator used by every system-level ratio below unless otherwise stated.",
@@ -16,14 +15,12 @@
       "bytes_per_element": 2
     }
   },
-
   "claim_classes": {
     "PPL_validated": "Perplexity is bit-exact identical (delta_ppl_pct = +0.00%) on the named model and dataset at the named config. The forward pass is identical to the uncompressed-cache forward pass.",
     "size_only": "Measured byte count for the named config. No PPL bench attached. These numbers are useful for N-scaling trends but are not load-bearing claims.",
     "wire_lossless": "The codec's wire format (FB2 / TQB1) is bit-exact: serializing a quantized code and deserializing produces an identical code. This is a per-codec property, not a per-config one.",
     "ppl_neutral": "PPL-validated; same as PPL_validated, just shorter."
   },
-
   "claims": {
     "smollm2_wikitext2_n8_lossless_default": {
       "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, default two-tier policy (fib k4_n32 cold + turbo b=4 lossless hot).",
@@ -32,8 +29,8 @@
         "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 40.5040,
-      "ratio_vs_fp16_kv": 20.2520,
+      "ratio_vs_f32_raw": 40.504,
+      "ratio_vs_fp16_kv": 20.252,
       "raw_total_bytes": 2604662784,
       "compressed_total_bytes": 64306320,
       "pool_bytes": 14746512,
@@ -44,12 +41,14 @@
       "roundtrip_ppl": 6.1328,
       "delta_ppl_pct": 0.0,
       "roundtrip_seconds": 435.89,
-      "ppl_window": [128, 1024],
+      "ppl_window": [
+        128,
+        1024
+      ],
       "ppl_window_note": "Window [128, 1024) is the 87.5% tail of the 1024-token context (includes both shared prefix and unique tail). PPL is bit-exact identical to the oracle on this same window.",
       "msi_run_date": "2026-06-03",
       "git_commit": "acf6424"
     },
-
     "smollm2_wikitext2_n8_lossy_default": {
       "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, default two-tier policy (fib k4_n32 cold + turbo b=4 lossy hot, BlockLogU8 radii).",
       "receipts": [
@@ -69,20 +68,22 @@
       "roundtrip_ppl": 6.1328,
       "delta_ppl_pct": 0.0,
       "roundtrip_seconds": 445.94,
-      "ppl_window": [128, 1024],
+      "ppl_window": [
+        128,
+        1024
+      ],
       "ppl_window_note": "Window [128, 1024) is the 87.5% tail of the 1024-token context. PPL is bit-exact identical to the oracle on this same window.",
       "msi_run_date": "2026-06-03",
       "git_commit": "acf6424"
     },
-
     "smollm2_wikitext2_n8_lossless_legacy_b8": {
       "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, legacy b=8 two-tier policy (fib k4_n32 cold + turbo b=8 lossless hot). DEPRECATED — superseded by smollm2_wikitext2_n8_lossless_default (40.53x at the b=4 default).",
       "receipts": [
         "results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/state_lossless.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 37.3100,
-      "ratio_vs_fp16_kv": 18.6550,
+      "ratio_vs_f32_raw": 37.31,
+      "ratio_vs_fp16_kv": 18.655,
       "raw_total_bytes": 2604662784,
       "compressed_total_bytes": 69811344,
       "pool_bytes": 14746512,
@@ -95,7 +96,6 @@
       "roundtrip_seconds": 419.84,
       "msi_run_date": "2026-06-03"
     },
-
     "smollm2_wikitext2_n8_lossy_legacy_b8": {
       "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, legacy b=8 lossy two-tier policy. DEPRECATED — superseded by smollm2_wikitext2_n8_lossy_default.",
       "receipts": [
@@ -115,7 +115,6 @@
       "delta_ppl_pct": 0.0,
       "msi_run_date": "2026-06-03"
     },
-
     "pool_only_smollm2": {
       "config": "SmolLM2-1.7B + WikiText-2, fib k4_n32 cold pool only, no shell tier.",
       "receipts": [
@@ -127,7 +126,6 @@
       "pool_compression_ratio": 21.33,
       "note": "The fib codec is a codebook-based vector quantizer, NOT bit-exact lossless. The 21.33x ratio is the codebook size (32 codewords, 2 bits per dim) over the original vector size, less wire overhead."
     },
-
     "qwen0_5b_synthetic_n8": {
       "config": "Qwen2.5-0.5B + synthetic corpus, N=8 agents, multi_agent_compact_lossless_lossy bench.",
       "receipts": [
@@ -140,7 +138,6 @@
       "warning": "Qwen0.5B size-only sweep. The naive_total_bytes denominator is a synthetic-size model (n_agents+1 * n_shared_tokens * num_layers * num_kv_heads * head_dim * 2 * 4), not a captured framework cache. Useful for N-scaling trends; not PPL-validated at N=8."
     }
   },
-
   "wire_lossless_certs": {
     "fib_fb2_batched": {
       "codec_id": "fib_k4_n32_batched",
@@ -153,11 +150,26 @@
       "test": "turbo-quant::tests::turbo_code_wire_v1_roundtrip"
     }
   },
-
   "non_claims": {
     "exact_kv_reconstruction": "We do NOT claim bit-exact reconstruction of the original K/V tensors. The fib cold tier is a codebook quantizer; the turbo hot tier is a polar/radii quantizer. PPL-validated neutrality on the measured configs is the strongest claim.",
     "out_of_distribution_ppl": "We do NOT claim PPL-neutrality on out-of-distribution corpora, 4K/8K context, or any model larger than SmolLM2-1.7B. The PPL validation set is WikiText-2 only.",
     "vs_fp16_framework_cache": "We do NOT claim to reduce framework cache bytes directly. proveKV decompresses back to f32 and patches the cache; the framework cache is unchanged in size. The claim is 'memory reduction vs an uncompressed f32 K/V baseline of the same context.'",
-    "decode_wallclock_speedup_from_batch_path": "Wall-clock bench (results/bench/decode_wallclock/, fedora-43, release build, 5 reps) shows the batch decode path (TurboQuantizer::decode_approximate_batch) is 1.54x SLOWER than the per-vec path (TurboQuantizer::decode_approximate) on the msi PPL bench shape. The batch path's docstring claims it amortizes per-call overhead, but the actual cost is dominated by per-vec trig and per-vec allocation that the batch path does not actually batch. Do NOT quote a 'batch decode speedup' number without re-measuring."
+    "decode_wallclock_speedup_from_batch_path": "Wall-clock bench (results/bench/decode_wallclock/, fedora-43, release build, 5 reps) shows the batch decode path (TurboQuantizer::decode_approximate_batch) is 1.54x SLOWER than the per-vec path (TurboQuantizer::decode_approximate) on the msi PPL bench shape. The batch path's docstring claims it amortizes per-call overhead, but the actual cost is dominated by per-vec trig and per-vec allocation that the batch path does not actually batch. Do NOT quote a 'batch decode speedup' number without re-measuring.",
+    "geometric_naive_reproduces_40_50x": "The geometric 8 x 201,326,592 B = 1,610,612,736 B fp16 K/V cache naive gives 25.05x lossless / 47.33x lossy, NOT the 40.50x / 76.54x in the receipt. Both are honest measurements against different baselines; pick the one that matches your framework. The geometric vs receipt gap is documented at docs/methodology/naive_computation.md."
+  },
+  "methodology": {
+    "naive_computation": {
+      "doc": "docs/methodology/naive_computation.md",
+      "summary": "The headline 40.50x / 76.54x ratios are derived from the receipt's raw_total_bytes (2,604,662,784 B). The geometric fp16 K/V cache (8 x 201,326,592 B = 1,610,612,736 B) is smaller by 1.62x; against that baseline, the ratios are 25.05x / 47.33x. Both ratios are honest measurements against different baselines; the gap is documented in the methodology doc and is a real gap in the public source (the Rust formula in prove_kv_multi_agent_shell.rs:336-340 produces 2,831,155,200, not 2,604,662,784).",
+      "geometric_naive_bytes": 1610612736,
+      "rust_formula_bytes": 2831155200,
+      "receipt_bytes": 2604662784,
+      "geometric_ratio_lossless": 25.05,
+      "geometric_ratio_lossy": 47.33,
+      "rust_formula_ratio_lossless": 44.02,
+      "rust_formula_ratio_lossy": 83.19,
+      "receipt_ratio_lossless": 40.5,
+      "receipt_ratio_lossy": 76.54
+    }
   }
 }
