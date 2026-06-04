@@ -176,6 +176,15 @@ fn main() {
     if lossy {
         policy.turbo_config.radii_compression = RadiiCompression::Lossy;
     }
+    // F4 audit fix: the shell codec must reflect the (bits, lossy)
+    // configuration exactly, otherwise ShellManifest::validate() will
+    // reject the manifest at materialize_shell() time. Re-derive it
+    // from turbo_config so the example's --lossy flag actually takes
+    // effect on the manifest.
+    policy.shell_codec = provekv::policy::turbo_batched_codec_id(
+        policy.turbo_config.bits,
+        matches!(policy.turbo_config.radii_compression, RadiiCompression::Lossy),
+    );
 
     // Build the pool from the shared tokens.
     eprintln!(
