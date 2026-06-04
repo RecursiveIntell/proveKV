@@ -43,8 +43,8 @@ bench — is the contribution of this repository.
 
 | Number | Value | What it actually is | Receipt |
 |---|---|---|---|
-| **40.53× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%, **b=4 default** | [`results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/) |
-| **76.55× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%, **b=4 default** | same as above |
+| **40.53× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%, **b=4 default** (post-audit binary acf6424) | [`results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/) |
+| **76.55× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%, **b=4 default** (post-audit binary acf6424) | [`results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/`](results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/) |
 | 37.31× lossless    | N=8 system, PPL-validated | **legacy b=8 config** (deprecated; superseded by 40.53×) | [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/) |
 | 65.88× lossy       | N=8 system, PPL-validated | legacy b=8 config | same as above |
 | 21.33× pool-only   | fib k4_n32 cold tier alone | SmolLM2-1.7B, PPL-validated | [`results/ppl/smollm2-1.7b/wikitext-2-lossless/`](results/ppl/smollm2-1.7b/wikitext-2-lossless/) |
@@ -371,6 +371,36 @@ single scaling curve.
   1024-token WikiText-2 + SmolLM2-1.7B measurement is the only
   published lossy receipt; longer-horizon validation is open
   work
+
+## Decode wall-clock (honest report)
+
+A wall-clock-only bench of the decode path is in
+[`turbo-quant/examples/decode_wallclock.rs`](turbo-quant/examples/decode_wallclock.rs)
+and the receipt is at
+[`results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json`](results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json).
+Shape matches the msi PPL bench: 24 layers × 32 kv_heads × 8 agents ×
+28 unique × 64 head_dim = 172,032 vectors at b=4.
+
+| Path | Local (fedora-43) | msi (gtx 1070) |
+|---|---|---|
+| `TurboQuantizer::decode_approximate` (per-vec) | 127.6 ms | 295.2 ms |
+| `TurboQuantizer::decode_approximate_batch` (batched) | 196.2 ms | 406.8 ms |
+| `TurboCodeWireV1::decode` + per-vec | 202.8 ms | 446.8 ms |
+| **batch / per-vec ratio** | **0.65x (1.54x slower)** | **0.73x (1.38x slower)** |
+
+**The batch decode path is SLOWER than the per-vec path, not faster.**
+The earlier-session prediction of 7-14x wall-clock speedup from the
+batch path does NOT materialize on this shape. The batch path's
+docstring claims it amortizes per-call overhead, but the actual cost
+is dominated by the per-vec trig (sin/cos) and per-vec allocation
+that the batch path does not actually batch. This is a real
+regression in the audit-work code, and the README does not claim a
+batch-decode speedup. See `CLAIMS.json` `non_claims.decode_wallclock_speedup_from_batch_path`
+for the full disclaimer.
+
+The b=4 PPL-validated wins (40.53x / 76.55x) come from the smaller
+per-vec shell size (160 → 144 B/vec at b=4 lossless), NOT from
+the batch decode path. The two are independent.
 
 ## Open work (transparently listed)
 

@@ -42,4 +42,15 @@ echo ""
 echo "=== Full test suite ==="
 cargo test --release --workspace --lib 2>&1 | tail -3
 echo ""
+echo "=== Wall-clock decode bench (sanity) ==="
+if [ -x target/release/examples/decode_wallclock ]; then
+    # 2 reps, just to confirm the binary works locally. The real receipt
+    # is in results/bench/decode_wallclock/ and was generated on both
+    # fedora-43 and msi.
+    target/release/examples/decode_wallclock 2 2>&1 | tail -1
+else
+    cargo build --release -p turbo-quant --example decode_wallclock 2>&1 | tail -1
+    target/release/examples/decode_wallclock 2 2>&1 | tail -1
+fi
+echo ""
 echo "All audit gates passed."

@@ -29,6 +29,18 @@
     "wire_vs_per_vec_ratio": 0.6295,
     "interpretation": "BATCH IS SLOWER than per-vec, not faster. The expected speedup from the batch path does NOT materialize on this shape. The batch path's main cost is allocating a fresh Vec<PolarCode> per call and a Vec<Vec<f32>> of per-vec rotated buffers; the actual apply_inverse_batch only saves the per-call validate_for branch, not the per-vec trig."
   },
+  "msi_repeat": {
+    "config": "Same as above. 5 reps. Run on jstevenson@192.168.50.69 (msi, GTX 1070, x86_64, fedora-based).",
+    "per_vec_ms_mean": 295.1700,
+    "per_vec_ms_min": 290.2488,
+    "batch_ms_mean": 406.7724,
+    "batch_ms_min": 395.8799,
+    "wire_ms_mean": 446.7553,
+    "wire_ms_min": 441.5134,
+    "speedup_batch_vs_per_vec": 0.7256,
+    "speedup_wire_vs_per_vec": 0.6607,
+    "interpretation": "MSI confirms the local result. Batch path is 1.38x SLOWER than per-vec (not faster as the earlier-session prediction claimed). The wall-clock regression is real and reproducible across both fedora-43 and msi, release build, 5 reps."
+  },
   "what_does_work": {
     "ppl_neutral_b4": "Validated post-audit at delta=+0.00% on SmolLM2-1.7B (this bench does not measure PPL, but the same batch path is what shipped in the b=4 path that the msi bench validated as bit-exact identical to the oracle.)",
     "size_40_53x": "Validated. 8 agents × 6,194,976 B shell + 14,746,512 B pool = 64,306,320 B system. 2,604,662,784 / 64,306,320 = 40.53x vs f32-raw."
