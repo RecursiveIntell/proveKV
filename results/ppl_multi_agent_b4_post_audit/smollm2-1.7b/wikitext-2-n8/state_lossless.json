@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0.0",
+  "model": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+  "corpus": "wikitext-2",
+  "n_shared": 800,
+  "n_unique": 28,
+  "n_agents": 8,
+  "n_total": 1024,
+  "ppl_frac": 0.875,
+  "seed": 42,
+  "started_at": "2026-06-03T21:10:28",
+  "model_config": {
+    "num_layers": 24,
+    "num_heads": 32,
+    "num_kv_heads": 32,
+    "head_dim": 64,
+    "hidden_size": 2048,
+    "attention_type": "MHA"
+  },
+  "ppl_window": [
+    800,
+    1024
+  ],
+  "phase0": {
+    "status": "complete",
+    "ppl": 6.1328125,
+    "cache_path": "/home/jstevenson/proveKV_bench/ppl_post_audit_b4/smollm2-1.7b/wikitext-2-n8/cache_oracle.pt"
+  },
+  "phase1": {
+    "lossy": false,
+    "ppl": 6.1328125,
+    "compression_ratio": null,
+    "roundtrip_seconds": 435.8925938606262,
+    "forward_seconds": 1.504476547241211,
+    "delta_ppl_pct": 0.0,
+    "status": "complete",
+    "completed_at": "2026-06-03T21:20:41"
+  }
+}

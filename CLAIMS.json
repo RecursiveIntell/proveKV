@@ -28,31 +28,33 @@
     "smollm2_wikitext2_n8_lossless_default": {
       "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, default two-tier policy (fib k4_n32 cold + turbo b=4 lossless hot).",
       "receipts": [
-        "results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/state_lossless.json",
-        "results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json",
-        "results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/state.json"
+        "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/state_lossless.json",
+        "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
       "ratio_vs_f32_raw": 40.5287,
       "ratio_vs_fp16_kv": 20.2644,
       "raw_total_bytes": 2604662784,
-      "compressed_total_bytes": 64267664,
+      "compressed_total_bytes": 64306320,
       "pool_bytes": 14746512,
       "shell_bytes_per_agent": 6194976,
       "shell_codec": "turbo_4bit_batched",
       "pool_compression_ratio": 21.33,
-      "oracle_ppl": 4.8125,
-      "roundtrip_ppl": 4.8125,
+      "oracle_ppl": 6.1328,
+      "roundtrip_ppl": 6.1328,
       "delta_ppl_pct": 0.0,
-      "roundtrip_seconds": 445.16,
-      "msi_run_date": "2026-06-03"
+      "roundtrip_seconds": 435.89,
+      "ppl_window": [128, 1024],
+      "ppl_window_note": "Window [128, 1024) is the 87.5% tail of the 1024-token context (includes both shared prefix and unique tail). PPL is bit-exact identical to the oracle on this same window.",
+      "msi_run_date": "2026-06-03",
+      "git_commit": "acf6424"
     },
 
     "smollm2_wikitext2_n8_lossy_default": {
       "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, default two-tier policy (fib k4_n32 cold + turbo b=4 lossy hot, BlockLogU8 radii).",
       "receipts": [
-        "results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/state_lossy.json",
-        "results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/shell_output_lossy/agents_receipt.json"
+        "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/state_lossy.json",
+        "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/shell_output_lossy/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
       "ratio_vs_f32_raw": 76.5452,
@@ -63,11 +65,14 @@
       "shell_bytes_per_agent": 2410272,
       "shell_codec": "turbo_4bit_batched_lossy",
       "pool_compression_ratio": 21.33,
-      "oracle_ppl": 4.8125,
-      "roundtrip_ppl": 4.8125,
+      "oracle_ppl": 6.1328,
+      "roundtrip_ppl": 6.1328,
       "delta_ppl_pct": 0.0,
-      "roundtrip_seconds": 439.92,
-      "msi_run_date": "2026-06-03"
+      "roundtrip_seconds": 445.94,
+      "ppl_window": [128, 1024],
+      "ppl_window_note": "Window [128, 1024) is the 87.5% tail of the 1024-token context. PPL is bit-exact identical to the oracle on this same window.",
+      "msi_run_date": "2026-06-03",
+      "git_commit": "acf6424"
     },
 
     "smollm2_wikitext2_n8_lossless_legacy_b8": {
@@ -152,6 +157,7 @@
   "non_claims": {
     "exact_kv_reconstruction": "We do NOT claim bit-exact reconstruction of the original K/V tensors. The fib cold tier is a codebook quantizer; the turbo hot tier is a polar/radii quantizer. PPL-validated neutrality on the measured configs is the strongest claim.",
     "out_of_distribution_ppl": "We do NOT claim PPL-neutrality on out-of-distribution corpora, 4K/8K context, or any model larger than SmolLM2-1.7B. The PPL validation set is WikiText-2 only.",
-    "vs_fp16_framework_cache": "We do NOT claim to reduce framework cache bytes directly. proveKV decompresses back to f32 and patches the cache; the framework cache is unchanged in size. The claim is 'memory reduction vs an uncompressed f32 K/V baseline of the same context.'"
+    "vs_fp16_framework_cache": "We do NOT claim to reduce framework cache bytes directly. proveKV decompresses back to f32 and patches the cache; the framework cache is unchanged in size. The claim is 'memory reduction vs an uncompressed f32 K/V baseline of the same context.'",
+    "decode_wallclock_speedup_from_batch_path": "Wall-clock bench (results/bench/decode_wallclock/, fedora-43, release build, 5 reps) shows the batch decode path (TurboQuantizer::decode_approximate_batch) is 1.54x SLOWER than the per-vec path (TurboQuantizer::decode_approximate) on the msi PPL bench shape. The batch path's docstring claims it amortizes per-call overhead, but the actual cost is dominated by per-vec trig and per-vec allocation that the batch path does not actually batch. Do NOT quote a 'batch decode speedup' number without re-measuring."
   }
 }

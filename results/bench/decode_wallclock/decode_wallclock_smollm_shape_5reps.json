@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "claim_status": "Decode wall-clock bench on SmolLM2-1.7B shape. Turbined path is SLOWER than per-vec path, contradicting the earlier-session expectation. Read carefully before quoting a 'batch speedup'.",
+  "config": {
+    "shape": "msi PPL bench shape: 24 layers, 32 kv_heads, head_dim=64, 8 agents, 28 unique tokens each",
+    "bits": 4,
+    "projections": 32,
+    "dim": 64,
+    "total_vecs": 172032,
+    "n_reps": 5
+  },
+  "per_vec_path": {
+    "method": "TurboQuantizer::decode_approximate (per-vec)",
+    "mean_ms": 127.6402,
+    "min_ms": 126.2151
+  },
+  "batch_path": {
+    "method": "TurboQuantizer::decode_approximate_batch → PolarQuantizer::decode_batch → RotationBackend::apply_inverse_batch",
+    "mean_ms": 196.2044,
+    "min_ms": 191.6893
+  },
+  "wire_path": {
+    "method": "TurboCodeWireV1::decode + TurboQuantizer::decode_approximate (per-vec)",
+    "mean_ms": 202.7663,
+    "min_ms": 197.1933
+  },
+  "speedup_observations": {
+    "batch_vs_per_vec_ratio": 0.6505,
+    "wire_vs_per_vec_ratio": 0.6295,
+    "interpretation": "BATCH IS SLOWER than per-vec, not faster. The expected speedup from the batch path does NOT materialize on this shape. The batch path's main cost is allocating a fresh Vec<PolarCode> per call and a Vec<Vec<f32>> of per-vec rotated buffers; the actual apply_inverse_batch only saves the per-call validate_for branch, not the per-vec trig."
+  },
+  "what_does_work": {
+    "ppl_neutral_b4": "Validated post-audit at delta=+0.00% on SmolLM2-1.7B (this bench does not measure PPL, but the same batch path is what shipped in the b=4 path that the msi bench validated as bit-exact identical to the oracle.)",
+    "size_40_53x": "Validated. 8 agents × 6,194,976 B shell + 14,746,512 B pool = 64,306,320 B system. 2,604,662,784 / 64,306,320 = 40.53x vs f32-raw."
+  },
+  "what_does_not_work": {
+    "decode_wallclock_speedup": "The batch path is 1.54x SLOWER than the per-vec path on this shape. This contradicts the earlier-session prediction of 7-14x speedup. The batch path's docstring claims it amortizes per-call branch/lookup overhead, but the actual cost is dominated by the per-vec trig (sin/cos) and the per-vec allocation, neither of which is batched."
+  },
+  "run_date": "2026-06-03",
+  "local_or_remote": "local",
+  "host": "fedora-43 (Nobara), x86_64, release build with LTO=thin"
+}
