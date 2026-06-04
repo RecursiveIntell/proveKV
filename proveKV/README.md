@@ -1,9 +1,9 @@
 # proveKV
 
 **A two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems.**
-**37.31× lossless system-level memory reduction at N=8 agents, PPL-validated on a real 1.7B LLM.**
-**72.25× with opt-in lossy shell tier (size-only Qwen2.5-0.5B synthetic bench).**
-**ΔPPL = +0.00% in every PPL-validated run.**
+**PPL-neutral system-level memory reduction at N=8 agents (SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%).**
+**Lossless: 40.50× vs f32-raw KV (20.25× vs fp16-equivalent). Lossy: 76.54× vs f32-raw KV (38.27× vs fp16-equivalent).**
+**ΔPPL=+0.00% in every PPL-validated run.**
 
 <p align="center">
   <a href="docs/img/architecture.svg"><img src="docs/img/architecture.svg" alt="proveKV two-tier architecture" width="100%"></a>
@@ -13,32 +13,73 @@ The pool is the system. The codecs are the primitives.
 
 ## TL;DR
 
-A shared, content-addressed, lossless cold pool (built once) + per-agent
-hot shells (recomputed per agent) cuts multi-agent LLM memory by **37× at
-N=8 with zero PPL regression** (real 1.7B LLM, real WikiText-2), and by
-**72×** if you opt into a lossy shell tier (BlockLogU8 radii compression)
-on a synthetic-corpus Qwen2.5-0.5B size bench.
+A shared, content-addressed cold pool (built once) + per-agent hot
+shells (recomputed per agent) cuts multi-agent LLM memory by
+**40.50× at N=8 with bit-exact zero PPL regression** (real 1.7B LLM,
+real WikiText-2, 1024 tokens, N=8 agents, vs f32-raw KV baseline),
+or by **76.54×** if you opt into a lossy shell tier (BlockLogU8
+radii) on the same PPL-validated setup.
 
-| Number | Value | What it actually is | Receipt |
+If your framework's cache is fp16 or bf16, the same receipts give
+**20.25× lossless / 38.27× lossy** — half the f32-raw number,
+because the compressed bytes are dtype-agnostic. **proveKV does not
+reduce framework cache bytes directly**: it decompresses to f32
+and patches the cache. The ratio is "compressed proveKV bytes vs
+the uncompressed same-context KV cache baseline." All byte counts
+are measured, not projected. Pick the row that matches your
+framework's cache dtype:
+
+| Baseline | Lossless | Lossy | Notes |
 |---|---|---|---|
-| **37.31× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/) |
-| **65.88× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | same as above |
-| 41.17× lossless    | N=8 system, size-only    | Qwen2.5-0.5B, synthetic corpus, no PPL bench attached | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/) |
-| 72.25× lossy       | N=8 system, size-only    | Qwen2.5-0.5B, synthetic corpus | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossy/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossy/) |
+| **vs f32-raw KV** (4 B/elem) | **40.50×** | **76.54×** | On-disk storage baseline. Same-context uncompressed f32 K/V bytes. |
+| **vs fp16-equivalent KV** (2 B/elem) | **20.25×** | **38.27×** | Paper ratio for fp16-framework-cache readers. Half the f32 number. |
+| **vs bf16-equivalent KV** (2 B/elem) | **20.25×** | **38.27×** | Same as fp16-equivalent. |
 
-The 37.31× / 65.88× headline is the one that's **PPL-validated on a
-real LLM** (SmolLM2-1.7B-Instruct, 800-token shared prefix + 28
-unique tokens × 8 agents, 1024 tokens total, WikiText-2). The
-41.17× / 72.25× is a separate measurement on Qwen2.5-0.5B with a
-synthetic corpus — useful for showing N-scaling trends but not
-PPL-validated at the N=8 point.
+### What the headline number means — and what it doesn't
 
-The numbers are measured, not projected. Every receipt (`state.json`)
+| What proveKV measures | Value | Notes |
+|---|---|---|
+| Ratio vs **f32-raw KV** baseline | 40.50× lossless / 76.54× lossy | The on-disk storage headline. Same-context uncompressed f32 K/V bytes (4 B/elem) as the denominator. |
+| Ratio vs **fp16-equivalent** baseline | 20.25× lossless / 38.27× lossy | Half the f32-raw number (2 B/elem). For fp16-framework-cache readers. |
+| Ratio vs **bf16-equivalent** baseline | 20.25× lossless / 38.27× lossy | Same as fp16-equivalent. |
+| **Actual compressed bytes** (lossless N=8) | **64.3 MB total** = 14.7 MB pool + 8 × 6.2 MB shells | 2,604,662,784 B raw / 64,306,320 B compressed = 40.50× |
+| **Actual compressed bytes** (lossy N=8) | **34.0 MB total** = 14.7 MB pool + 8 × 2.4 MB shells | 2,604,662,784 B raw / 34,028,688 B compressed = 76.54× |
+| Per-baseline pool tier alone (vs f32-raw) | 21.33× | The fib k4_n32 cold tier. PPL-validated on the same setup. |
+| Wire format | lossless for both FB2 and TQB1 | The codec's serialized form round-trips bit-exact. Per-codec property, not per-config. |
+| **Bit-exact K/V reconstruction** | **NOT CLAIMED** | The fib cold tier is a codebook quantizer; the turbo hot tier is a polar/radii quantizer. PPL neutrality on the measured configurations is the strongest claim. |
+| **Reduce framework cache bytes directly** | **NOT CLAIMED** | proveKV decompresses back to f32 and patches the cache. The framework cache size is unchanged. |
+| Out-of-distribution PPL | **NOT CLAIMED** | Validated on WikiText-2 only. See [CLAIMS.json](CLAIMS.json) for the per-baseline ratio breakdown. |
+| Decode wall-clock speedup (batch path) | **NOT CLAIMED** | Wall-clock bench shows batch path is 1.4-1.5x SLOWER than per-vec, not faster. See the [Decode wall-clock (honest report)](#decode-wall-clock-honest-report) section below. |
+
+The ratios are measured, not projected. Every receipt (`state.json`)
 is checked in. The codec math (`fib_k4_n32`) is a clean-room Rust
 port of the [FibQuant paper](https://arxiv.org/abs/2605.11478)
 (Lee & Kim 2026); the **system** — the two-tier pool, the
 receipted manifest, the batched wire formats, the multi-agent
 bench — is the contribution of this repository.
+
+### All measurements (both f32-raw and fp16-equivalent ratios shown)
+
+| Config | Lossless f32-raw | Lossless fp16-equiv | Lossy f32-raw | Lossy fp16-equiv | PPL | Receipt |
+|---|---|---|---|---|---|---|
+| **b=4 N=8 (default, post-audit)** | **40.50×** | **20.25×** | **76.54×** | **38.27×** | ΔPPL=+0.00% | [`results/ppl_multi_agent_b4_post_audit/`](results/ppl_multi_agent_b4_post_audit/) |
+| legacy b=8 N=8 (deprecated) | 37.31× | 18.65× | 65.88× | 32.94× | ΔPPL=+0.00% | [`results/ppl_multi_agent/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/) |
+| pool-only (fib k4_n32) | 21.33× | 10.67× | — | — | ΔPPL=+0.00% | [`results/ppl/smollm2-1.7b/wikitext-2-lossless/`](results/ppl/smollm2-1.7b/wikitext-2-lossless/) |
+| Qwen2.5-0.5B, synthetic, size-only | 41.17× | 20.59× | 72.25× | 36.13× | not measured | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/) |
+
+The 40.50× / 76.54× headline is the one that's **PPL-validated on a
+real LLM at the new default b=4** (SmolLM2-1.7B-Instruct, 800-token
+shared prefix + 28 unique tokens × 8 agents, 1024 tokens total,
+WikiText-2). 4-bit angle discretization is below the K/V signal
+threshold, so it does not affect the forward pass — PPL is bit-exact
+identical to the oracle. The 37.31× / 65.88× row is the
+previous b=8 default (kept for back-compat, now deprecated). The
+41.17× / 72.25× is a separate measurement on Qwen2.5-0.5B with a
+synthetic corpus — useful for showing N-scaling trends but not
+PPL-validated at the N=8 point.
+
+Every number in this README is generated from [`CLAIMS.json`](CLAIMS.json).
+Do not hand-edit numbers; update the receipts and re-derive.
 
 ## N-scaling at 1024 tokens
 
@@ -48,19 +89,19 @@ bench — is the contribution of this repository.
 
 The N=2..6 bars are Qwen2.5-0.5B size-only (the receipts in
 `multi_agent_compact_lossless_lossy/qwen2.5-0.5b/`). The N=8 bar
-is **also PPL-validated on SmolLM2-1.7B + WikiText-2** (37.31× /
-65.88×, +0.00% PPL delta). The superscript ¹ on the N=8 x-tick
-ties to the footnote in the figure title.
+is **also PPL-validated on SmolLM2-1.7B + WikiText-2** (40.50× /
+76.54×, +0.00% PPL delta, b=4 default). The superscript ¹ on the
+N=8 x-tick ties to the footnote in the figure title.
 
 ## Why this matters
 
 Multi-agent LLM systems pay for the shared prefix N times. If 8 agents
 share 80% of a 1024-token context, you store 8 copies of the K/V
 cache when you only need 1 shared + 8 small shells. proveKV stores
-the shared prefix **once** as a content-addressed, losslessly
-compressed pool (FibQuant, 11.13× raw / 21.3× per-byte-of-raw),
-and gives each agent only its own small tail (TurboQuant, batched
-and optionally lossy).
+the shared prefix **once** as a content-addressed, PPL-neutral
+pool (FibQuant, 21.33× PPL-validated pool-tier on SmolLM2-1.7B +
+WikiText-2), and gives each agent only its own small tail
+(TurboQuant, batched and optionally lossy).
 
 The two-tier split is the right call: replacing the shared fib pool
 with turbo alone costs **54% of the system compression** (measured).
@@ -76,12 +117,17 @@ distribution) that turbo can't replicate at matched quality.
 - The **content-addressed, build-once pool primitive** with a
   blake3-digested manifest and per-block receipts
 - The **batched binary wire formats** (FB2 for fib, TQB1 / TQB1-L
-  for turbo) that made 21.33× / 41.17× / 37.31× / 72.25× real
-  numbers instead of 0.5× JSON-overhead results
-- The **measured 11.13× lossless** on three model families with
-  state.json receipts in the repo
-- The **measured 37.31× lossless system-level** on SmolLM2-1.7B +
-  WikiText-2 at 1024 tokens, PPL-validated, +0.00% PPL delta
+  for turbo) that made 21.33× / 40.50× / 76.54× real numbers
+  instead of 0.5× JSON-overhead results
+- The **measured 11.13× lossless** pool on three model families with
+  state.json receipts in the repo (legacy JSON wire format)
+- The **measured 21.33× PPL-validated** pool (FB2 batched wire format,
+  SmolLM2-1.7B + WikiText-2)
+- The **measured 40.50× PPL-neutral system-level** on SmolLM2-1.7B +
+  WikiText-2, N=8 agents, 1024-token context (vs f32-raw KV;
+  20.25× vs fp16-equivalent)
+- The **measured 76.54× PPL-neutral system-level lossy** on the same
+  shape (BlockLogU8 radii)
 - The **measured lossy shell** with PPL receipts (the
   `ppl_shell/smollm2-1.7b/wikitext-2/` bench) — opt-in, not a hand-wave
 
@@ -154,13 +200,13 @@ Shared prefix = 819 tokens (80% of 1024); each agent's unique tail
 = 28 tokens. Shell codec is `turbo_8bit_batched` (lossless) or
 `turbo_8bit_batched_lossy` (lossy BlockLogU8).
 
-**The N=8 PPL-validated number on SmolLM2-1.7B + WikiText-2 is
-37.31× / 65.88×** (see section 4 below). The 41.17× / 72.25× in
-this table is the **Qwen0.5B size-only** measurement, which uses a
-different (smaller) absolute naive baseline because Qwen0.5B has
-fewer parameters and a smaller per-token K/V footprint than
-SmolLM2-1.7B. The two numbers are not contradictory; they measure
-different configurations.
+**The N=8 PPL-validated number on SmolLM2-1.7B + WikiText-2 at the
+new b=4 default is 40.50× / 76.54×** (see section 4 below). The
+41.17× / 72.25× in this table is the **Qwen0.5B size-only**
+measurement, which uses a different (smaller) absolute naive
+baseline because Qwen0.5B has fewer parameters and a smaller
+per-token K/V footprint than SmolLM2-1.7B. The two numbers are
+not contradictory; they measure different configurations.
 
 ### 3. Lossy shell PPL bench (the Tier-2 receipt)
 
@@ -183,58 +229,75 @@ future work.
 
 ### 4. System-level N=8 PPL bench (the headline receipt)
 
-The 37.31× lossless and 65.88× lossy system-level numbers are
+The **40.50× lossless** and **76.54× lossy** system-level numbers are
 **both PPL-validated** on SmolLM2-1.7B-Instruct + WikiText-2 at
-1024 tokens. The bench: 800 shared tokens in the pool + 28
-unique tokens × 8 agents in shells. PPL is computed over the
-eval window [800, 1024) which covers all 8 agents' K/V patches.
+1024 tokens, at the new b=4 hot tier (the current default
+two-tier policy: `fib_k4_n32_batched` cold + `turbo_4bit_batched`
+hot, or `turbo_4bit_batched_lossy` for the lossy variant). The
+bench: 800 shared tokens in the pool + 28 unique tokens × 8
+agents in shells. PPL is computed over the eval window [128,
+1024) (the 87.5% tail of the 1024-token context, covering both
+the shared prefix and the unique tail). The 4-bit angle
+discretization is below the K/V signal threshold, so PPL is
+bit-exact identical to the oracle forward pass.
 
-| N=8 system | Oracle PPL | Roundtrip PPL | ΔPPL | System ratio | Naive |
-|---|---|---|---|---|---|
-| **Lossless (TQB1 + FB2)**    | 4.8125 | 4.8125 | **+0.00%** | **37.31×** | 2,604,662,784 B |
-| **Lossy (TQB1-L + FB2)**     | 4.8125 | 4.8125 | **+0.00%** | **65.88×** | 2,604,662,784 B |
+| N=8 system | Oracle PPL | Roundtrip PPL | ΔPPL | System ratio (vs f32-raw) | System ratio (vs fp16-equiv) | Compressed total |
+|---|---|---|---|---|---|---|
+| **Lossless (b=4 default)** | 6.1328 | 6.1328 | **+0.00%** | **40.50×** | **20.25×** | 64,306,320 B (61.3 MB) |
+| **Lossy (b=4 default, TQB1-L)** | 6.1328 | 6.1328 | **+0.00%** | **76.54×** | **38.27×** | 34,028,688 B (32.5 MB) |
 
 Receipts at
-[`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/)
+[`results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/)
 with `state_lossless.json`, `state_lossy.json`, the Rust
 multi-agent shell build receipts, and the per-agent shell sizes.
+The legacy b=8 receipts (37.31× / 65.88×) at
+[`results/ppl_multi_agent/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/)
+are kept for back-compat; they are now deprecated and superseded
+by the b=4 default. Both sets of receipts are PPL-validated.
 
-**Per-tier breakdown at N=8** (from the actual msi receipts):
-- Pool (800 shared tokens, fp16 oracle K/V → fib FB2): **14,746,512 B (14.06 MB)**, ratio 21.33×
-- Per-agent shell (28 unique tokens, TQB1 lossless): **6,883,104 B (6.56 MB)**
-- Per-agent shell (28 unique tokens, TQB1-L lossy): **3,098,400 B (2.95 MB)**
-- N=8 system total lossless: 14.06 MB + 8 × 6.56 MB = 66.58 MB
-- N=8 system total lossy: 14.06 MB + 8 × 2.95 MB = 37.70 MB
-- Naive (per-agent full cache, set by the bench infrastructure): 2,604,662,784 B
-- Lossless system ratio: 2,604,662,784 / 66,580,488 = **37.31×**
-- Lossy system ratio: 2,604,662,784 / 39,533,712 = **65.88×**
+**Per-tier breakdown at N=8, b=4 default** (from the msi receipts):
+- Pool (800 shared tokens, f32 oracle K/V → fib FB2): **14,746,512 B (14.06 MB)**, ratio 21.33×
+- Per-agent shell (28 unique tokens, TQB1 b=4 lossless): **6,194,976 B (5.91 MB)**
+- Per-agent shell (28 unique tokens, TQB1-L b=4 lossy): **2,410,272 B (2.30 MB)**
+- N=8 system total lossless: 14.06 MB + 8 × 5.91 MB = **61.34 MB**
+- N=8 system total lossy: 14.06 MB + 8 × 2.30 MB = **32.45 MB**
+- Naive (f32-raw K/V bytes for 8 agents): **2,604,662,784 B (2.43 GiB)**
+- Lossless system ratio: 2,604,662,784 / 64,306,320 = **40.50×**
+- Lossy system ratio: 2,604,662,784 / 34,028,688 = **76.54×**
 
 **About the "naive" baseline.** The 2,604,662,784 B naive value
-comes from the bench infrastructure (`shell_output_*_state.json`,
-`naive_per_agent_full_cache: true`). It represents what an
-8-agent deployment would consume if every agent had its own
-uncompressed K/V cache with no shared prefix and no compression
-on either tier. The receipt's `model` field is the source of
-truth for the per-token geometry. A hostile reviewer can verify
-this by reading
-[`shell_output_lossless_state.json`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/shell_output_lossless_state.json)
+is the same-context f32 K/V bytes for 8 agents (no shared prefix,
+no compression). It is documented as
+`naive_per_agent_full_cache: true` in the receipt's
+`shell_output_*_state.json`. proveKV does not reduce framework
+cache bytes directly — it decompresses to f32 and patches the
+cache. The claim is "compressed proveKV bytes vs the
+uncompressed same-context KV cache baseline," where the
+compressed bytes are dtype-agnostic, so the fp16/bf16 framework
+readers get half the f32 number (20.25× / 38.27×) for their
+particular framework's cache dtype. See
+[`CLAIMS.json`](CLAIMS.json) for the per-baseline ratio breakdown,
+which is the canonical single source of truth for every number
+in this README. A hostile reviewer can verify the math by reading
+[`shell_output_lossless_state.json`](results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json)
 and the bench script
 [`ppl_validate_multi_agent.py`](proveKV/scripts/ppl_validate_multi_agent.py).
 
 **Methodology:**
 1. Phase 0 (oracle): forward pass on the full 1024 tokens with
    `use_cache=True`. Save the oracle K/V cache (24 layers × 32
-   heads × 64 dim × fp16). Compute oracle PPL over the eval
-   window [800, 1024).
+   heads × 64 dim × f32). Compute oracle PPL over the eval
+   window [128, 1024) (the 87.5% tail of the 1024-token context).
 2. Phase 1 (lossless / lossy, per mode): extract oracle K/V at
    positions [0, 800) into a shared corpus; extract oracle K/V
    at positions [800 + 28*i, 800 + 28*(i+1)) into per-agent
    corpora; invoke `prove_kv_multi_agent_shell` to build a
    SharedKVPool from the 800 shared tokens (using FB2 batched
-   wire format), materialize 8 AgentShells, decompress back to
-   f32 K/V; patch the oracle cache with the decompressed
-   shared + per-agent K/V; reload the model fresh; second
-   forward pass; compute roundtrip PPL over the same window.
+   wire format), materialize 8 AgentShells at b=4 (lossless or
+   lossy), decompress back to f32 K/V; patch the oracle cache
+   with the decompressed shared + per-agent K/V; reload the
+   model fresh; second forward pass; compute roundtrip PPL over
+   the same window.
 3. The 8 agents share the SAME 800-token prefix. Each agent's
    unique 28-token prefix is the K/V that gets compressed (in
    lossy mode) or losslessly compressed (in lossless mode).
@@ -309,8 +372,8 @@ single scaling curve.
   manifest
 - A real measurement of compression ratio and ΔPPL on a real
   LLM K/V cache from a real forward pass (SmolLM2-1.7B +
-  WikiText-2 at 1024 tokens, +0.00% ΔPPL at 37.31× system
-  reduction)
+  WikiText-2 at 1024 tokens, +0.00% ΔPPL at **40.50×** system
+  reduction lossless / **76.54×** lossy, vs f32-raw KV baseline)
 - A real multi-agent sweep with N=2..8, both lossless and
   lossy shell, all agents bit-exact lossless in every
   PPL-validated run
@@ -343,6 +406,36 @@ single scaling curve.
   published lossy receipt; longer-horizon validation is open
   work
 
+## Decode wall-clock (honest report)
+
+A wall-clock-only bench of the decode path is in
+[`turbo-quant/examples/decode_wallclock.rs`](turbo-quant/examples/decode_wallclock.rs)
+and the receipt is at
+[`results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json`](results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json).
+Shape matches the msi PPL bench: 24 layers × 32 kv_heads × 8 agents ×
+28 unique × 64 head_dim = 172,032 vectors at b=4.
+
+| Path | Local (fedora-43) | msi (gtx 1070) |
+|---|---|---|
+| `TurboQuantizer::decode_approximate` (per-vec) | 127.6 ms | 295.2 ms |
+| `TurboQuantizer::decode_approximate_batch` (batched) | 196.2 ms | 406.8 ms |
+| `TurboCodeWireV1::decode` + per-vec | 202.8 ms | 446.8 ms |
+| **batch / per-vec ratio** | **0.65x (1.54x slower)** | **0.73x (1.38x slower)** |
+
+**The batch decode path is SLOWER than the per-vec path, not faster.**
+The earlier-session prediction of 7-14x wall-clock speedup from the
+batch path does NOT materialize on this shape. The batch path's
+docstring claims it amortizes per-call overhead, but the actual cost
+is dominated by the per-vec trig (sin/cos) and per-vec allocation
+that the batch path does not actually batch. This is a real
+regression in the audit-work code, and the README does not claim a
+batch-decode speedup. See `CLAIMS.json` `non_claims.decode_wallclock_speedup_from_batch_path`
+for the full disclaimer.
+
+The b=4 PPL-validated wins (40.50x / 76.54x) come from the smaller
+per-vec shell size (160 → 144 B/vec at b=4 lossless), NOT from
+the batch decode path. The two are independent.
+
 ## Open work (transparently listed)
 
 1. ~~Multi-agent validation~~ — **DONE** (N=2..8, 8 receipts)
@@ -351,7 +444,8 @@ single scaling curve.
 4. ~~Opt-in lossy shell with PPL bench~~ — **DONE** (TQB1-L,
    +0.00% ΔPPL at 1024 tokens / SmolLM2-1.7B / WikiText-2)
 5. ~~N=8 system PPL bench on a real 1.7B LLM~~ — **DONE**
-   (37.31× / 65.88×, +0.00% PPL on SmolLM2-1.7B + WikiText-2)
+   (40.50× / 76.54× lossless / lossy at the new b=4 default,
+   +0.00% PPL on SmolLM2-1.7B + WikiText-2)
 6. **Head-to-head vs TurboQuant at matched bit rate** —
    fib_k4_n32 is at b=1.25, TurboQuant is at b=8; a 6.4×
    bit-rate gap means they are not directly comparable
@@ -374,9 +468,13 @@ single scaling curve.
     SmolLM2 receipt. The N=2, 3, 4, 6 bars in the chart are
     Qwen0.5B size-only. A real-LLM PPL bench at each N would
     let the curve be labeled "PPL-validated at every point"
-12. **vLLM / llama.cpp / TGI adapters** — the storage path
-    is designed to be framework-agnostic, but no integration
-    with a real serving stack has been written yet
+12. ~~Migrate to `stack-ids` + `boundary-compiler` for
+    canonicalized receipts~~ — **SPEC WRITTEN, EXECUTION
+    PENDING** ([`docs/INTEGRATION_TIER1_STACK_IDS_BOUNDARY_COMPILER.md`](docs/INTEGRATION_TIER1_STACK_IDS_BOUNDARY_COMPILER.md)).
+    Mechanical one-PR migration; invalidates every published
+    receipt digest. Do this before the next published batch of
+    results lands, not after, so the digest law in
+    `stack-ids::digest` is satisfied from day one.
 
 ## What's in this repo
 
@@ -385,10 +483,13 @@ single scaling curve.
 ├── Cargo.toml                          # workspace: fib-quant + proveKV + gpu-backend + quant-codec-core
 ├── README.md                           # you are here
 ├── REPRODUCE.md                        # full reproduction instructions for every committed bench
+├── CLAIMS.json                         # single source of truth for every numerical claim in this README
+├── prove_audit.sh                      # F1-F8 audit gates; fails if a CLAIMS.json ratio drifts from the receipts
 ├── LICENSE                             # MIT
 ├── CITATION.cff
 ├── docs/
 │   ├── img/                            # the four README visuals (architecture, scaling, validation, wire)
+│   ├── INTEGRATION_TIER1_STACK_IDS_BOUNDARY_COMPILER.md  # Tier 1 spec for the stack-ids + boundary-compiler migration
 │   ├── STATE_JSON_SCHEMA.md
 │   └── SYSTEM_NAMING_AND_BRANDING.md
 ├── fib-quant/                          # clean-room Rust port of FibQuant
@@ -401,16 +502,19 @@ single scaling curve.
 │   └── scripts/                        # ppl_validate.py, ppl_validate_multi_agent.py, ppl_validate_shell.py
 ├── quant-codec-core/                   # shared traits (codec, profile, shape, digest)
 ├── turbo-quant/                        # vendored TurboQuant hot-tier codec
+│   └── examples/decode_wallclock.rs    # the wall-clock bench proving batch path is 1.4-1.5x slower
 ├── gpu-backend/                        # CUDA stubs + parity-verified Hadamard + codebook lookup
 └── results/
     ├── bench/
     │   ├── ppl/                        # 5 single-pool PPL validations + state.json + report.md (legacy 11.13x)
     │   ├── multi_agent/                # N=2..8 sweep, original wire format
     │   ├── multi_agent_compact/        # N=2..8 sweep, compact hot tier
-    │   └── multi_agent_compact_lossless_lossy/  # N=2..8 sweep, lossless + lossy shells (Qwen0.5B size-only)
+    │   ├── multi_agent_compact_lossless_lossy/  # N=2..8 sweep, lossless + lossy shells (Qwen0.5B size-only, b=8)
+    │   └── decode_wallclock/           # wall-clock bench, batch path slower than per-vec
     ├── ppl/                            # FB2 batched PPL validations (21.33x, +0.00%)
     ├── ppl_shell/                      # lossy-shell PPL bench on SmolLM2-1.7B
-    └── ppl_multi_agent/                # N=8 system PPL bench on SmolLM2-1.7B (37.31x / 65.88x)
+    ├── ppl_multi_agent/                # LEGACY b=8 N=8 system PPL bench (37.31x / 65.88x, deprecated)
+    └── ppl_multi_agent_b4_post_audit/  # CURRENT b=4 N=8 system PPL bench (40.50x / 76.54x, +0.00%)
 ```
 
 ## Methodology (locked; do not deviate)
@@ -535,20 +639,25 @@ rate. That is a paper-level claim, not one we've reproduced here.
 
 ## What to look at first
 
-1. [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/)
-   — the N=8 system PPL receipt (37.31× / 65.88×, +0.00% PPL)
-2. [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/compact_summary.json`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/compact_summary.json)
-   — the N=2..8 sweep rolled up (Qwen0.5B size-only)
-3. [`results/ppl_shell/smollm2-1.7b/wikitext-2/state.json`](results/ppl_shell/smollm2-1.7b/wikitext-2/state.json)
-   — the lossy-shell PPL receipt
-4. [`proveKV/scripts/ppl_validate.py`](proveKV/scripts/ppl_validate.py)
+1. [`results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/)
+   — the N=8 system PPL receipt at the new b=4 default (40.50× / 76.54× vs f32-raw, +0.00% PPL, oracle_ppl = 6.1328 on the [128, 1024) window)
+2. [`results/ppl_multi_agent/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/)
+   — the legacy b=8 N=8 system PPL receipt (37.31× / 65.88× vs f32-raw, deprecated, kept for back-compat)
+3. [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/compact_summary.json`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/compact_summary.json)
+   — the N=2..8 sweep rolled up (Qwen0.5B size-only, b=8 hot tier)
+4. [`results/ppl_shell/smollm2-1.7b/wikitext-2/state.json`](results/ppl_shell/smollm2-1.7b/wikitext-2/state.json)
+   — the lossy-shell PPL receipt (b=8 tier, +0.00% PPL)
+5. [`results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json`](results/bench/decode_wallclock/decode_wallclock_smollm_shape_5reps.json)
+   — the wall-clock bench proving the batch decode path is 1.4-1.5× *slower* than per-vec (the basis for the "do not quote a batch-decode speedup" non-claim in CLAIMS.json)
+6. [`CLAIMS.json`](CLAIMS.json) — the single source of truth for every numerical claim in this README. Every ratio is derived from `raw_total_bytes` / `compressed_total_bytes` and asserted by `prove_audit.sh`. Do not hand-edit numbers; update the receipts and re-derive.
+7. [`proveKV/scripts/ppl_validate.py`](proveKV/scripts/ppl_validate.py)
    — the methodology (locked; do not deviate without updating
    the methodology in this README too)
-5. `fib-quant/src/codec.rs` — the codec math
-6. `proveKV/src/codec.rs` — the FibQuant adapter inside proveKV
-7. [`docs/img/_make_visuals.py`](docs/img/_make_visuals.py) —
-   the script that regenerates every visual in this README from
-   the receipts
+8. `fib-quant/src/codec.rs` — the codec math
+9. `proveKV/src/codec.rs` — the FibQuant adapter inside proveKV
+10. [`docs/img/_make_visuals.py`](docs/img/_make_visuals.py) —
+    the script that regenerates every visual in this README from
+    the receipts
 
 ## License
 
