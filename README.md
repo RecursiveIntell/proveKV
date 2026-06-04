@@ -2,7 +2,7 @@
 
 **A two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems.**
 **PPL-neutral system-level memory reduction at N=8 agents (SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%).**
-**Lossless: 40.50× vs f32-raw KV (20.25× vs fp16-equivalent). Lossy: 76.54× vs f32-raw KV (38.27× vs fp16-equivalent).**
+**Lossless: 36.00× vs f32-raw KV (18.00× vs fp16-equivalent). Lossy: 68.04× vs f32-raw KV (34.02× vs fp16-equivalent).**
 **ΔPPL=+0.00% in every PPL-validated run.**
 
 <p align="center">
@@ -15,13 +15,13 @@ The pool is the system. The codecs are the primitives.
 
 A shared, content-addressed cold pool (built once) + per-agent hot
 shells (recomputed per agent) cuts multi-agent LLM memory by
-**40.50× at N=8 with bit-exact zero PPL regression** (real 1.7B LLM,
+**36.00× at N=8 with bit-exact zero PPL regression** (real 1.7B LLM,
 real WikiText-2, 1024 tokens, N=8 agents, vs f32-raw KV baseline),
-or by **76.54×** if you opt into a lossy shell tier (BlockLogU8
+or by **68.04×** if you opt into a lossy shell tier (BlockLogU8
 radii) on the same PPL-validated setup.
 
 If your framework's cache is fp16 or bf16, the same receipts give
-**20.25× lossless / 38.27× lossy** — half the f32-raw number,
+**18.00× lossless / 34.02× lossy** — half the f32-raw number,
 because the compressed bytes are dtype-agnostic. **proveKV does not
 reduce framework cache bytes directly**: it decompresses to f32
 and patches the cache. The ratio is "compressed proveKV bytes vs

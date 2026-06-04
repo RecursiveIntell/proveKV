@@ -190,7 +190,7 @@ fn main() {
     let num_layers = shape.num_layers as u64;
     let num_kv_heads = shape.num_kv_heads as u64;
     let head_dim = shape.head_dim as u64;
-    let naive_total_bytes: u64 = (n_agents as u64 + 1)
+    let naive_total_bytes: u64 = n_agents as u64
         * (input.shared_tokens.len() as u64
             * num_layers
             * num_kv_heads

@@ -29,9 +29,9 @@
         "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 40.504,
-      "ratio_vs_fp16_kv": 20.252,
-      "raw_total_bytes": 2604662784,
+      "ratio_vs_f32_raw": 36.00355555555555,
+      "ratio_vs_fp16_kv": 18.001777777777775,
+      "raw_total_bytes": 2315255808,
       "compressed_total_bytes": 64306320,
       "pool_bytes": 14746512,
       "shell_bytes_per_agent": 6194976,
@@ -56,9 +56,9 @@
         "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/shell_output_lossy/agents_receipt.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 76.5431,
-      "ratio_vs_fp16_kv": 38.2716,
-      "raw_total_bytes": 2604662784,
+      "ratio_vs_f32_raw": 68.0383111111111,
+      "ratio_vs_fp16_kv": 34.01915555555555,
+      "raw_total_bytes": 2315255808,
       "compressed_total_bytes": 34028688,
       "pool_bytes": 14746512,
       "shell_bytes_per_agent": 2410272,
@@ -77,14 +77,14 @@
       "git_commit": "acf6424"
     },
     "smollm2_wikitext2_n8_lossless_legacy_b8": {
-      "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, legacy b=8 two-tier policy (fib k4_n32 cold + turbo b=8 lossless hot). DEPRECATED — superseded by smollm2_wikitext2_n8_lossless_default (40.53x at the b=4 default).",
+      "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, legacy b=8 two-tier policy (fib k4_n32 cold + turbo b=8 lossless hot). DEPRECATED \u2014 superseded by smollm2_wikitext2_n8_lossless_default (40.53x at the b=4 default).",
       "receipts": [
         "results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/state_lossless.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 37.31,
-      "ratio_vs_fp16_kv": 18.655,
-      "raw_total_bytes": 2604662784,
+      "ratio_vs_f32_raw": 33.16444444444444,
+      "ratio_vs_fp16_kv": 16.58222222222222,
+      "raw_total_bytes": 2315255808,
       "compressed_total_bytes": 69811344,
       "pool_bytes": 14746512,
       "shell_bytes_per_agent": 6883104,
@@ -97,14 +97,14 @@
       "msi_run_date": "2026-06-03"
     },
     "smollm2_wikitext2_n8_lossy_legacy_b8": {
-      "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, legacy b=8 lossy two-tier policy. DEPRECATED — superseded by smollm2_wikitext2_n8_lossy_default.",
+      "config": "SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28*8 unique = 1024 tokens total, legacy b=8 lossy two-tier policy. DEPRECATED \u2014 superseded by smollm2_wikitext2_n8_lossy_default.",
       "receipts": [
         "results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/state_lossy.json"
       ],
       "claim_status": "PPL_validated",
-      "ratio_vs_f32_raw": 65.8846,
-      "ratio_vs_fp16_kv": 32.9423,
-      "raw_total_bytes": 2604662784,
+      "ratio_vs_f32_raw": 58.56408888888889,
+      "ratio_vs_fp16_kv": 29.282044444444445,
+      "raw_total_bytes": 2315255808,
       "compressed_total_bytes": 39533712,
       "pool_bytes": 14746512,
       "shell_bytes_per_agent": 3098400,

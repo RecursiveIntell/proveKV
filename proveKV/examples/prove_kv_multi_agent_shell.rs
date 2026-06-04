@@ -333,7 +333,7 @@ fn main() {
 
     // Compute the bench state.
     let n_agents = input.agents.len() as u32;
-    let naive_total_bytes: u64 = (n_agents as u64 + 1)
+    let naive_total_bytes: u64 = n_agents as u64
         * (input.shared_tokens.len() as u64
             * num_layers as u64
             * num_kv_heads as u64
