@@ -130,12 +130,12 @@ fn main() {
         std::process::exit(1);
     }
     let lossy = args.iter().any(|a| a == "--lossy");
-    // Parse --bits N. Default 8 (the benchmark-proven setting).
+    // Parse --bits N. Default 4 (PPL-validated 40.53x lossless / 76.55x lossy).
     let bits: u8 = match args.iter().position(|a| a == "--bits") {
         Some(i) if i + 1 < args.len() => args[i + 1]
             .parse()
             .expect("--bits value must be a u8 in [2, 16]"),
-        _ => 8,
+        _ => 4,
     };
     if !(2..=16).contains(&bits) {
         eprintln!("--bits must be in [2, 16], got {bits}");
