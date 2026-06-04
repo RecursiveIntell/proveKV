@@ -1,9 +1,9 @@
 # proveKV
 
 **A two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems.**
-**40.53× lossless system-level memory reduction at N=8 agents, PPL-validated on a real 1.7B LLM.**
-**76.55× with opt-in lossy shell tier (same model, ΔPPL=+0.00%).**
-**ΔPPL = +0.00% in every PPL-validated run.**
+**40.53× PPL-neutral system-level memory reduction at N=8 agents (vs f32-raw KV, SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%).**
+**76.55× with the opt-in lossy shell tier (same model, ΔPPL=+0.00%).**
+**ΔPPL=+0.00% in every PPL-validated run.**
 
 <p align="center">
   <a href="docs/img/architecture.svg"><img src="docs/img/architecture.svg" alt="proveKV two-tier architecture" width="100%"></a>
@@ -13,19 +13,42 @@ The pool is the system. The codecs are the primitives.
 
 ## TL;DR
 
-A shared, content-addressed, lossless cold pool (built once) + per-agent
-hot shells (recomputed per agent) cuts multi-agent LLM memory by **40.5× at
-N=8 with zero PPL regression** (real 1.7B LLM, real WikiText-2), and by
-**76.5×** if you opt into a lossy shell tier (BlockLogU8 radii compression)
-on the same PPL-validated setup.
+A shared, content-addressed cold pool (built once) + per-agent hot
+shells (recomputed per agent) cuts multi-agent LLM memory by **40.5× at
+N=8 with bit-exact zero PPL regression** (real 1.7B LLM, real
+WikiText-2, 1024 tokens, N=8 agents), and by **76.5×** if you opt
+into a lossy shell tier (BlockLogU8 radii) on the same
+PPL-validated setup.
+
+### What the headline number means — and what it doesn't
+
+| What proveKV measures | Value | Notes |
+|---|---|---|
+| Ratio vs **f32-raw KV** baseline | 40.53× lossless / 76.55× lossy | The headline. Same-context uncompressed f32 K/V bytes (4 B/elem) as the denominator. |
+| Ratio vs **fp16-equivalent** baseline | 20.26× lossless / 38.27× lossy | Half the f32-raw number (2 B/elem). Useful if your framework's cache is fp16 — but **proveKV does not reduce framework cache bytes directly**; it decompresses back to f32 and patches the cache. |
+| Ratio vs **bf16-equivalent** baseline | 20.26× lossless / 38.27× lossy | Same as fp16-equivalent. |
+| Per-baseline pool tier alone | 21.33× | The fib k4_n32 cold tier, vs f32-raw. PPL-validated on the same setup. |
+| Wire format | lossless for both FB2 and TQB1 | The codec's serialized form round-trips bit-exact. This is per-codec, not per-config. |
+| **Bit-exact K/V reconstruction** | **NOT CLAIMED** | The fib cold tier is a codebook quantizer; the turbo hot tier is a polar/radii quantizer. PPL neutrality on the measured configurations is the strongest claim. |
+| Out-of-distribution PPL | **NOT CLAIMED** | Validated on WikiText-2 only. See [CLAIMS.json](CLAIMS.json) for the per-baseline ratio breakdown. |
+
+The ratios are measured, not projected. Every receipt (`state.json`)
+is checked in. The codec math (`fib_k4_n32`) is a clean-room Rust
+port of the [FibQuant paper](https://arxiv.org/abs/2605.11478)
+(Lee & Kim 2026); the **system** — the two-tier pool, the
+receipted manifest, the batched wire formats, the multi-agent
+bench — is the contribution of this repository.
+
+### All measurements
 
 | Number | Value | What it actually is | Receipt |
 |---|---|---|---|
-| **40.53× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | [`results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/) |
-| **76.55× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00% | same as above |
+| **40.53× lossless** | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%, **b=4 default** | [`results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent_b4/smollm2-1.7b/wikitext-2-n8/) |
+| **76.55× lossy**    | N=8 system, PPL-validated | SmolLM2-1.7B + WikiText-2, 1024 tok, ΔPPL=+0.00%, **b=4 default** | same as above |
 | 37.31× lossless    | N=8 system, PPL-validated | **legacy b=8 config** (deprecated; superseded by 40.53×) | [`results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/`](results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/) |
 | 65.88× lossy       | N=8 system, PPL-validated | legacy b=8 config | same as above |
-| 41.17× lossless    | N=8 system, size-only    | Qwen2.5-0.5B, synthetic corpus, no PPL bench attached | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/) |
+| 21.33× pool-only   | fib k4_n32 cold tier alone | SmolLM2-1.7B, PPL-validated | [`results/ppl/smollm2-1.7b/wikitext-2-lossless/`](results/ppl/smollm2-1.7b/wikitext-2-lossless/) |
+| 41.17× lossless    | N=8 system, size-only    | Qwen2.5-0.5B, **synthetic corpus**, no PPL bench attached | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossless/) |
 | 72.25× lossy       | N=8 system, size-only    | Qwen2.5-0.5B, synthetic corpus | [`results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossy/`](results/bench/multi_agent_compact_lossless_lossy/qwen2.5-0.5b/n8_lossy/) |
 
 The 40.53× / 76.55× headline is the one that's **PPL-validated on a
@@ -33,18 +56,14 @@ real LLM at the new default b=4** (SmolLM2-1.7B-Instruct, 800-token
 shared prefix + 28 unique tokens × 8 agents, 1024 tokens total,
 WikiText-2). 4-bit angle discretization is below the K/V signal
 threshold, so it does not affect the forward pass — PPL is bit-exact
-identical to the lossless oracle. The 37.31× / 65.88× row is the
+identical to the oracle. The 37.31× / 65.88× row is the
 previous b=8 default (kept for back-compat, now deprecated). The
 41.17× / 72.25× is a separate measurement on Qwen2.5-0.5B with a
 synthetic corpus — useful for showing N-scaling trends but not
 PPL-validated at the N=8 point.
 
-The numbers are measured, not projected. Every receipt (`state.json`)
-is checked in. The codec math (`fib_k4_n32`) is a clean-room Rust
-port of the [FibQuant paper](https://arxiv.org/abs/2605.11478)
-(Lee & Kim 2026); the **system** — the two-tier pool, the
-receipted manifest, the batched wire formats, the multi-agent
-bench — is the contribution of this repository.
+Every number in this README is generated from [`CLAIMS.json`](CLAIMS.json).
+Do not hand-edit numbers; update the receipts and re-derive.
 
 ## N-scaling at 1024 tokens
 
@@ -54,19 +73,19 @@ bench — is the contribution of this repository.
 
 The N=2..6 bars are Qwen2.5-0.5B size-only (the receipts in
 `multi_agent_compact_lossless_lossy/qwen2.5-0.5b/`). The N=8 bar
-is **also PPL-validated on SmolLM2-1.7B + WikiText-2** (37.31× /
-65.88×, +0.00% PPL delta). The superscript ¹ on the N=8 x-tick
-ties to the footnote in the figure title.
+is **also PPL-validated on SmolLM2-1.7B + WikiText-2** (40.53× /
+76.55×, +0.00% PPL delta, b=4 default). The superscript ¹ on the
+N=8 x-tick ties to the footnote in the figure title.
 
 ## Why this matters
 
 Multi-agent LLM systems pay for the shared prefix N times. If 8 agents
 share 80% of a 1024-token context, you store 8 copies of the K/V
 cache when you only need 1 shared + 8 small shells. proveKV stores
-the shared prefix **once** as a content-addressed, losslessly
-compressed pool (FibQuant, 11.13× raw / 21.3× per-byte-of-raw),
-and gives each agent only its own small tail (TurboQuant, batched
-and optionally lossy).
+the shared prefix **once** as a content-addressed, PPL-neutral
+pool (FibQuant, 21.33× PPL-validated pool-tier on SmolLM2-1.7B +
+WikiText-2), and gives each agent only its own small tail
+(TurboQuant, batched and optionally lossy).
 
 The two-tier split is the right call: replacing the shared fib pool
 with turbo alone costs **54% of the system compression** (measured).
@@ -82,12 +101,16 @@ distribution) that turbo can't replicate at matched quality.
 - The **content-addressed, build-once pool primitive** with a
   blake3-digested manifest and per-block receipts
 - The **batched binary wire formats** (FB2 for fib, TQB1 / TQB1-L
-  for turbo) that made 21.33× / 41.17× / 37.31× / 72.25× real
-  numbers instead of 0.5× JSON-overhead results
-- The **measured 11.13× lossless** on three model families with
-  state.json receipts in the repo
-- The **measured 37.31× lossless system-level** on SmolLM2-1.7B +
-  WikiText-2 at 1024 tokens, PPL-validated, +0.00% PPL delta
+  for turbo) that made 21.33× / 40.53× / 76.55× real numbers
+  instead of 0.5× JSON-overhead results
+- The **measured 11.13× lossless** pool on three model families with
+  state.json receipts in the repo (legacy JSON wire format)
+- The **measured 21.33× PPL-validated** pool (FB2 batched wire format,
+  SmolLM2-1.7B + WikiText-2)
+- The **measured 40.53× PPL-neutral system-level** on SmolLM2-1.7B +
+  WikiText-2 at 1024 tokens, b=4 default, +0.00% PPL delta
+- The **measured 76.55× PPL-neutral system-level lossy** on the same
+  setup, b=4 lossy (BlockLogU8 radii), +0.00% PPL delta
 - The **measured lossy shell** with PPL receipts (the
   `ppl_shell/smollm2-1.7b/wikitext-2/` bench) — opt-in, not a hand-wave
 
