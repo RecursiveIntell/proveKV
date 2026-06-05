@@ -15,7 +15,7 @@ The pool is the system. The codecs are the primitives.
 
 A shared, content-addressed cold pool (built once) + per-agent hot
 shells (recomputed per agent) cuts multi-agent LLM memory by
-**36.00× at N=8 with bit-exact zero PPL regression** (real 1.7B LLM,
+**36.00× at N=8 with measured +0.00% ΔPPL** (real 1.7B LLM,
 real WikiText-2, 1024 tokens, N=8 agents, vs f32-raw KV baseline),
 or by **68.04×** if you opt into a lossy shell tier (BlockLogU8
 radii) on the same PPL-validated setup.
@@ -80,8 +80,7 @@ The 36.00× / 68.04× headline is the one that's **PPL-validated on a
 real LLM at the new default b=4** (SmolLM2-1.7B-Instruct, 800-token
 shared prefix + 28 unique tokens × 8 agents, 1024 tokens total,
 WikiText-2). 4-bit angle discretization is below the K/V signal
-threshold, so it does not affect the forward pass — PPL is bit-exact
-identical to the oracle. The 33.16× / 58.56× row is the
+threshold, so it does not affect the forward pass — PPL matches the oracle at the reported precision. The 33.16× / 58.56× row is the
 previous b=8 default (kept for back-compat, now deprecated). The
 41.17× / 72.25× is a separate measurement on Qwen2.5-0.5B with a
 synthetic corpus — useful for showing N-scaling trends but not
@@ -171,7 +170,7 @@ The first five rows are the legacy JSON wire format at **11.13×**
 (5.6× vs fp16 raw). The last row is the new FB2 batched wire
 format on the same model and corpus at **21.33×** (10.7× vs fp16
 raw) — the compression ratio nearly doubles without changing the
-codec math, and PPL stays bit-exact.
+codec math, and PPL stays identical at reported precision.
 
 The 11.13× compression ratio is **invariant** across all five legacy
 configurations. The codec is lossless for every model
@@ -189,8 +188,8 @@ ratio and pool size are unchanged. Receipt at
 [`results/bench/ppl/smollm2-1.7b/code-source/state.json`](results/bench/ppl/smollm2-1.7b/code-source/state.json).
 
 **Reading the `n=1280` row:** SmolLM2 at 25% longer context. The
-compression ratio holds at 11.13× and the roundtrip is still
-bit-exact. At 1536 tokens the model OOMs on the 7.91 GB test GPU;
+compression ratio holds at 11.13× and the roundtrip PPL still
+matches at reported precision. At 1536 tokens the model OOMs on the 7.91 GB test GPU;
 8K+ contexts need an A100 / H100.
 
 ### 2. Multi-agent scaling sweep: N=2..8, Qwen0.5B size-only (N=8 also PPL-validated)
@@ -221,8 +220,8 @@ not contradictory; they measure different configurations.
 
 The lossy tier (BlockLogU8 quantization of the turbo radii) is
 end-to-end benched on SmolLM2-1.7B-Instruct with the 800-token
-shared / 224-token shell split, and the roundtrip PPL is
-**byte-identical** to the oracle at 1024 tokens.
+shared / 224-token shell split, and the roundtrip PPL
+matches the oracle at reported precision at 1024 tokens.
 
 | Shell tier | Shell size | vs lossless | Oracle PPL | Roundtrip PPL | ΔPPL |
 |---|---|---|---|---|---|
@@ -247,8 +246,8 @@ bench: 800 shared tokens in the pool + 28 unique tokens × 8
 agents in shells. PPL is computed over the eval window [128,
 1024) (the 87.5% tail of the 1024-token context, covering both
 the shared prefix and the unique tail). The 4-bit angle
-discretization is below the K/V signal threshold, so PPL is
-bit-exact identical to the oracle forward pass.
+discretization is below the measured PPL sensitivity threshold in this setup, so PPL
+matches the oracle at reported precision.
 
 | N=8 system | Oracle PPL | Roundtrip PPL | ΔPPL | System ratio (vs f32-raw) | System ratio (vs fp16-equiv) | Compressed total |
 |---|---|---|---|---|---|---|
@@ -384,7 +383,7 @@ single scaling curve.
   WikiText-2 at 1024 tokens, +0.00% ΔPPL at **36.00×** system
   reduction lossless / **68.04×** lossy, vs f32-raw KV baseline)
 - A real multi-agent sweep with N=2..8, both lossless and
-  lossy shell, all agents bit-exact lossless in every
+  lossy shell, all agents PPL-neutral in every
   PPL-validated run
 - Deterministic: seed 42, fixed corpus slice, fixed n_tokens,
   fixed n_layers. Re-running yields the same numbers to the

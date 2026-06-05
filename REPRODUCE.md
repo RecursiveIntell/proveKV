@@ -3,7 +3,63 @@
 Two ways: with the committed state.json (zero compute, just verify) or
 from scratch on a GPU host.
 
-## Verify the committed result (no GPU required)
+## Verify the headline N=8 result (no GPU required)
+
+This checks the current Reddit-facing claim from committed receipts:
+SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28×8 unique
+1024-token context, b=4 default hot tier.
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+claims = json.loads(Path('CLAIMS.json').read_text())['claims']
+for key in ['smollm2_wikitext2_n8_lossless_default', 'smollm2_wikitext2_n8_lossy_default']:
+    c = claims[key]
+    ratio = c['raw_total_bytes'] / c['compressed_total_bytes']
+    print(key)
+    print(f"  oracle_ppl        = {c['oracle_ppl']:.4f}")
+    print(f"  roundtrip_ppl     = {c['roundtrip_ppl']:.4f}")
+    print(f"  delta_ppl_pct     = {c['delta_ppl_pct']:+.2f}%")
+    print(f"  ratio_vs_f32_raw  = {ratio:.2f}x")
+    print(f"  ratio_vs_fp16_eq  = {ratio / 2:.2f}x")
+    print(f"  compressed_bytes  = {c['compressed_total_bytes']:,}")
+    for receipt in c['receipts']:
+        print(f"  receipt_exists    = {Path(receipt).exists()} {receipt}")
+PY
+```
+
+Expected output:
+
+```text
+smollm2_wikitext2_n8_lossless_default
+  oracle_ppl        = 6.1328
+  roundtrip_ppl     = 6.1328
+  delta_ppl_pct     = +0.00%
+  ratio_vs_f32_raw  = 36.00x
+  ratio_vs_fp16_eq  = 18.00x
+  compressed_bytes  = 64,306,320
+  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/state_lossless.json
+  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json
+smollm2_wikitext2_n8_lossy_default
+  oracle_ppl        = 6.1328
+  roundtrip_ppl     = 6.1328
+  delta_ppl_pct     = +0.00%
+  ratio_vs_f32_raw  = 68.04x
+  ratio_vs_fp16_eq  = 34.02x
+  compressed_bytes  = 34,028,688
+  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/state_lossy.json
+  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/shell_output_lossy/agents_receipt.json
+```
+
+For the full public-surface audit, run:
+
+```bash
+bash prove_audit.sh
+```
+
+## Verify the legacy single-pool result (no GPU required)
 
 ```bash
 cat results/bench/ppl/smollm2-1.7b/wikitext-2/state.json | python -c "

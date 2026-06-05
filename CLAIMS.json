@@ -16,7 +16,7 @@
     }
   },
   "claim_classes": {
-    "PPL_validated": "Perplexity is bit-exact identical (delta_ppl_pct = +0.00%) on the named model and dataset at the named config. The forward pass is identical to the uncompressed-cache forward pass.",
+    "PPL_validated": "Perplexity matches the oracle at the reported precision (delta_ppl_pct = +0.00%) on the named model and dataset at the named config. This is a PPL-neutrality claim, not a bit-exact K/V reconstruction claim.",
     "size_only": "Measured byte count for the named config. No PPL bench attached. These numbers are useful for N-scaling trends but are not load-bearing claims.",
     "wire_lossless": "The codec's wire format (FB2 / TQB1) is bit-exact: serializing a quantized code and deserializing produces an identical code. This is a per-codec property, not a per-config one.",
     "ppl_neutral": "PPL-validated; same as PPL_validated, just shorter."
