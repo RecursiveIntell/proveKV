@@ -345,10 +345,8 @@ impl FibCodeV1 {
         let block_count = u32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]);
         let n_blocks = u32::from_le_bytes([bytes[10], bytes[11], bytes[12], bytes[13]]) as usize;
         let norm_format_tag = bytes[14];
-        let norm_len =
-            u16::from_le_bytes([bytes[15], bytes[16]]) as usize;
-        let indices_len =
-            u16::from_le_bytes([bytes[17], bytes[18]]) as usize;
+        let norm_len = u16::from_le_bytes([bytes[15], bytes[16]]) as usize;
+        let indices_len = u16::from_le_bytes([bytes[17], bytes[18]]) as usize;
         // Validate profile match.
         if wire_index_bits != profile.wire_index_bits {
             return Err(FibQuantError::CorruptPayload(format!(
@@ -486,7 +484,8 @@ impl FibQuantizer {
         let block_count = self.profile.block_count() as usize;
         let mut indices = Vec::with_capacity(block_count);
         for block in rotated_f32.chunks_exact(k) {
-            indices.push(gpu_backend::nearest_codeword_f32(block, &self.codebook.codewords, k) as u32);
+            indices
+                .push(gpu_backend::nearest_codeword_f32(block, &self.codebook.codewords, k) as u32);
         }
         Ok(FibCodeV1 {
             schema_version: CODE_SCHEMA.into(),
@@ -799,7 +798,6 @@ impl FibQuantizer {
         if codes.is_empty() {
             return Ok(Vec::new());
         }
-        let d = self.profile.ambient_dim as usize;
         let k = self.profile.block_dim as usize;
         let codebook_size = self.profile.codebook_size as usize;
         let codewords = &self.codebook.codewords;
@@ -807,9 +805,12 @@ impl FibQuantizer {
         for code in codes {
             self.validate_code_header(code)?;
             let block_count = self.profile.block_count() as usize;
-            let unpacked = unpack_indices(&code.indices, block_count, self.profile.wire_index_bits)?;
+            let unpacked =
+                unpack_indices(&code.indices, block_count, self.profile.wire_index_bits)?;
             let expected_len = block_count.checked_mul(k).ok_or_else(|| {
-                FibQuantError::ResourceLimitExceeded("decoded rotated vector length overflow".into())
+                FibQuantError::ResourceLimitExceeded(
+                    "decoded rotated vector length overflow".into(),
+                )
             })?;
             // Gather codewords in place. No allocation per index.
             let mut rotated_f32: Vec<f32> = Vec::with_capacity(expected_len);
@@ -834,7 +835,7 @@ impl FibQuantizer {
             let reconstructed = self.rotation.apply_inverse_f32(&rotated_f32)?;
             let scaled: Vec<f32> = reconstructed
                 .into_iter()
-                .map(|value| (value * norm as f32))
+                .map(|value| value * norm as f32)
                 .collect();
             check_finite(&scaled)?;
             out.push(scaled);
@@ -942,8 +943,7 @@ impl FibQuantizer {
         // that case. (Re-deriving the codebook just to compute the
         // digest cost ~6ms per call, which is prohibitive for batch
         // decode of 1.5M+ blocks.)
-        if !code.codebook_digest.is_empty()
-            && code.codebook_digest != self.codebook.codebook_digest
+        if !code.codebook_digest.is_empty() && code.codebook_digest != self.codebook.codebook_digest
         {
             return Err(FibQuantError::CodebookDigestMismatch {
                 expected: self.codebook.codebook_digest.clone(),
@@ -1097,17 +1097,18 @@ mod tests {
     fn batched_wire_roundtrip_matches_single() {
         let (profile, quantizer) = build_test_quantizer();
         let vectors: Vec<Vec<f32>> = (0..16)
-            .map(|i| (0..64).map(|j| ((i * 64 + j) as f32 * 0.013).sin()).collect())
+            .map(|i| {
+                (0..64)
+                    .map(|j| ((i * 64 + j) as f32 * 0.013).sin())
+                    .collect()
+            })
             .collect();
         let codes: Vec<_> = vectors
             .iter()
             .map(|v| quantizer.encode(v).unwrap())
             .collect();
         // Single-block (FB1) total
-        let single_bytes: Vec<Vec<u8>> = codes
-            .iter()
-            .map(|c| c.to_compact_bytes())
-            .collect();
+        let single_bytes: Vec<Vec<u8>> = codes.iter().map(|c| c.to_compact_bytes()).collect();
         let single_total: usize = single_bytes.iter().map(|b| b.len()).sum();
         // Batched (FB2)
         let batched_bytes = FibCodeV1::encode_batch(&codes, &profile).unwrap();
@@ -1128,7 +1129,10 @@ mod tests {
         let decoded = FibCodeV1::decode_batch(&batched_bytes, &profile).unwrap();
         assert_eq!(decoded.len(), codes.len());
         for (i, (orig, back)) in codes.iter().zip(decoded.iter()).enumerate() {
-            assert_eq!(orig.norm_payload, back.norm_payload, "norm mismatch at vec {i}");
+            assert_eq!(
+                orig.norm_payload, back.norm_payload,
+                "norm mismatch at vec {i}"
+            );
             assert_eq!(orig.indices, back.indices, "indices mismatch at vec {i}");
             assert_eq!(orig.wire_index_bits, back.wire_index_bits);
             assert_eq!(orig.block_count, back.block_count);

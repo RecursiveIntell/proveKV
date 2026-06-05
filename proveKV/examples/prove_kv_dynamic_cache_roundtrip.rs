@@ -39,7 +39,6 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use provekv::policy::CompressionPolicy;
 use provekv::shape::{AttentionType, KvTensorShape};
 use provekv::SharedKVPool;
 use serde::{Deserialize, Serialize};
@@ -95,8 +94,7 @@ fn main() {
     fs::create_dir_all(&output_dir).expect("create output dir");
 
     let input_bytes = fs::read(&input_path).expect("read input");
-    let input: InputJson =
-        serde_json::from_slice(&input_bytes).expect("parse input json");
+    let input: InputJson = serde_json::from_slice(&input_bytes).expect("parse input json");
 
     let attn_type = match input.shape.attention_type.as_str() {
         "MHA" => AttentionType::MHA,
@@ -112,14 +110,10 @@ fn main() {
         head_dim: input.shape.head_dim,
         hidden_size: input.shape.hidden_size,
     };
-    let corpus: Vec<(String, Vec<f32>)> = input
-        .tokens
-        .into_iter()
-        .map(|t| (t.id, t.vector))
-        .collect();
+    let corpus: Vec<(String, Vec<f32>)> =
+        input.tokens.into_iter().map(|t| (t.id, t.vector)).collect();
     let seed = input.seed.unwrap_or(42);
 
-    let policy = CompressionPolicy::default_two_tier();
     eprintln!(
         "[proveKV] building pool: shape={:?} num_tokens={} num_layers={} num_kv_heads={} head_dim={}",
         attn_type,
@@ -166,15 +160,10 @@ fn main() {
 
     // Decompress and write each layer
     for layer_idx in 0..pool.manifest.num_layers as usize {
-        let decompressed = pool
-            .decompress_layer(layer_idx)
-            .expect("decompress layer");
+        let decompressed = pool.decompress_layer(layer_idx).expect("decompress layer");
         let json = serde_json::to_vec(&decompressed).expect("serialize layer");
-        fs::write(
-            output_dir.join(format!("layer_{layer_idx:03}.json")),
-            json,
-        )
-        .expect("write layer");
+        fs::write(output_dir.join(format!("layer_{layer_idx:03}.json")), json)
+            .expect("write layer");
     }
     eprintln!(
         "[proveKV] wrote {} layer files to {}",

@@ -17,9 +17,7 @@ fn compact_bytes_roundtrip_is_lossless() {
     profile.lloyd_iterations = 3;
     let quantizer = FibQuantizer::new(profile.clone()).unwrap();
 
-    let v: Vec<f32> = (0..64)
-        .map(|i| ((i as f32) * 0.137).sin() * 1.5)
-        .collect();
+    let v: Vec<f32> = (0..64).map(|i| ((i as f32) * 0.137).sin() * 1.5).collect();
     let original = quantizer.encode(&v).unwrap();
     let original_decoded = quantizer.decode(&original).unwrap();
 
@@ -56,14 +54,20 @@ fn compact_bytes_roundtrip_is_lossless() {
 #[test]
 fn compact_bytes_rejects_bad_magic() {
     let bytes = vec![b'X', b'B', b'1', 1, 5, 0, 0, 0, 16, 0, 0];
-    let r = FibCodeV1::from_compact_bytes(&bytes, &FibQuantProfileV1::paper_default(64, 4, 32, 42).unwrap());
+    let r = FibCodeV1::from_compact_bytes(
+        &bytes,
+        &FibQuantProfileV1::paper_default(64, 4, 32, 42).unwrap(),
+    );
     assert!(r.is_err(), "should reject bad magic");
 }
 
 #[test]
 fn compact_bytes_rejects_truncated() {
     let bytes = vec![b'F', b'B', b'1', 1]; // only 4 bytes
-    let r = FibCodeV1::from_compact_bytes(&bytes, &FibQuantProfileV1::paper_default(64, 4, 32, 42).unwrap());
+    let r = FibCodeV1::from_compact_bytes(
+        &bytes,
+        &FibQuantProfileV1::paper_default(64, 4, 32, 42).unwrap(),
+    );
     assert!(r.is_err(), "should reject truncated header");
 }
 
@@ -77,6 +81,9 @@ fn compact_bytes_rejects_wrong_indices_len() {
     bytes.extend_from_slice(&2u16.to_le_bytes()); // norm_len=2
     bytes.extend_from_slice(&[0u8; 2]); // norm payload
     bytes.push(0); // only 1 index byte, need 10
-    let r = FibCodeV1::from_compact_bytes(&bytes, &FibQuantProfileV1::paper_default(64, 4, 32, 42).unwrap());
+    let r = FibCodeV1::from_compact_bytes(
+        &bytes,
+        &FibQuantProfileV1::paper_default(64, 4, 32, 42).unwrap(),
+    );
     assert!(r.is_err(), "should reject mismatched indices length");
 }

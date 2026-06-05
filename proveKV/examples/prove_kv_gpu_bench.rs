@@ -18,8 +18,8 @@
 use std::time::Instant;
 
 use provekv::codec::create_codec;
-use provekv::pool::SharedKVPool;
 use provekv::policy::CODEC_FIB_K4_N32;
+use provekv::pool::SharedKVPool;
 use provekv::shape::{AttentionType, KvTensorShape};
 use rand::Rng;
 use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
@@ -70,11 +70,7 @@ fn make_corpus(m: ModelShape, n_tokens: usize) -> Vec<(String, Vec<f32>)> {
 
 /// Time just the encode_batch portion, using a codec that already had its
 /// codebook built (so the Lloyd-Max / codebook training cost is excluded).
-fn time_encode_only(
-    model: ModelShape,
-    n_tokens: usize,
-    corpus: &[(String, Vec<f32>)],
-) -> u128 {
+fn time_encode_only(model: ModelShape, n_tokens: usize, corpus: &[(String, Vec<f32>)]) -> u128 {
     // First, do one full build to build the codebook, then immediately
     // re-use the resulting quantizer for the timed encode-only run.
     let shape = make_shape(model);
@@ -101,8 +97,7 @@ fn time_encode_only(
         let mut value_inputs: Vec<Vec<f32>> = Vec::with_capacity(n_tokens * num_kv_heads);
         for (_token_id, vec) in corpus.iter() {
             for head_idx in 0..num_kv_heads {
-                let base_offset =
-                    layer_idx * num_kv_heads * head_dim * 2 + head_idx * head_dim * 2;
+                let base_offset = layer_idx * num_kv_heads * head_dim * 2 + head_idx * head_dim * 2;
                 let key_end = base_offset + head_dim;
                 let value_end = key_end + head_dim;
                 key_inputs.push(vec[base_offset..key_end].to_vec());
@@ -156,7 +151,11 @@ fn run_one(model: ModelShape, n_tokens: usize) {
 
     assert_eq!(pool.manifest.num_shared_tokens, n_tokens as u32);
     // Receipt backend must agree with the per-call probe.
-    let expected = if gpu_dispatch_would == "yes" { "gpu" } else { "cpu" };
+    let expected = if gpu_dispatch_would == "yes" {
+        "gpu"
+    } else {
+        "cpu"
+    };
     assert_eq!(
         receipt.backend, expected,
         "receipt backend drift: probe said {expected}, receipt said {}",

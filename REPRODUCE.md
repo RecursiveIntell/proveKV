@@ -116,7 +116,7 @@ rolls up the 5 state.jsons into a single scaling curve.
 ## Reproduce the hot-tier quality and memory bench
 
 The hot-tier bench uses the same `prove_kv_multi_agent_shell` Rust
-example with the `--shell-bits` flag. To isolate the shell tier
+example with the `--bits` flag. To isolate the shell tier
 (set `shared_frac=0.0625` so the shared pool is just 64 tokens
 and the agent shell covers the remaining 960 tokens):
 
@@ -127,7 +127,7 @@ for bits in 2 4 8; do
   mkdir -p "$out"
   ./target/release/examples/prove_kv_multi_agent_shell \
     bench/ppl/qwen2.5-0.5b/wikitext-2/prove_kv_corpus.json "$out" \
-    --n-agents 1 --shared-frac 0.0625 --seed 42 --shell-bits ${bits}
+    --n-agents 1 --shared-frac 0.0625 --seed 42 --bits ${bits}
   python3 scripts/ppl_multi_agent.py \
     --model Qwen/Qwen2.5-0.5B-Instruct \
     --multi-agent-dir "$out" \
@@ -140,7 +140,7 @@ for bits in 2 8; do
   mkdir -p "$out"
   ./target/release/examples/prove_kv_multi_agent_shell \
     bench/ppl/smollm2-1.7b/wikitext-2/prove_kv_corpus.json "$out" \
-    --n-agents 1 --shared-frac 0.0625 --seed 42 --shell-bits ${bits}
+    --n-agents 1 --shared-frac 0.0625 --seed 42 --bits ${bits}
   python3 scripts/ppl_multi_agent.py \
     --model HuggingFaceTB/SmolLM2-1.7B-Instruct \
     --multi-agent-dir "$out" \
@@ -161,7 +161,7 @@ for sf in 0.5 0.95; do
   mkdir -p "$out"
   ./target/release/examples/prove_kv_multi_agent_shell \
     bench/ppl/smollm2-1.7b/wikitext-2/prove_kv_corpus.json "$out" \
-    --n-agents 2 --shared-frac ${sf} --seed 42 --shell-bits 2
+    --n-agents 2 --shared-frac ${sf} --seed 42 --bits 2
   python3 scripts/ppl_multi_agent.py \
     --model HuggingFaceTB/SmolLM2-1.7B-Instruct \
     --shared-frac ${sf} \

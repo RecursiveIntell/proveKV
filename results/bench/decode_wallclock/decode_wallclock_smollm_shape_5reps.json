@@ -43,7 +43,7 @@
   },
   "what_does_work": {
     "ppl_neutral_b4": "Validated post-audit at delta=+0.00% on SmolLM2-1.7B (this bench does not measure PPL, but the same batch path is what shipped in the b=4 path that the msi bench validated as bit-exact identical to the oracle.)",
-    "size_40_53x": "Validated. 8 agents × 6,194,976 B shell + 14,746,512 B pool = 64,306,320 B system. 2,604,662,784 / 64,306,320 = 40.53x vs f32-raw."
+    "size_40_53x": "Validated. 8 agents × 6,194,976 B shell + 14,746,512 B pool = 64,306,320 B system. 2,315,255,808 / 64,306,320 = 36.00x vs f32-raw."
   },
   "what_does_not_work": {
     "decode_wallclock_speedup": "The batch path is 1.54x SLOWER than the per-vec path on this shape. This contradicts the earlier-session prediction of 7-14x speedup. The batch path's docstring claims it amortizes per-call branch/lookup overhead, but the actual cost is dominated by the per-vec trig (sin/cos) and the per-vec allocation, neither of which is batched."

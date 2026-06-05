@@ -3628,7 +3628,7 @@ z
     <use xlink:href="#DejaVuSans-Bold-36" transform="translate(5425.792969 0)"/>
     <use xlink:href="#DejaVuSans-Bold-29" transform="translate(5495.373047 0)"/>
    </g>
-   <!-- (1) N=8 SmolLM2-1.7B + WikiText-2 b=4: 40.50× lossless / 76.54× lossy (f32-raw baseline)  ·  20.25× / 38.27× (fp16-equiv)  ·  ΔPPL = 0.00% -->
+   <!-- (1) N=8 SmolLM2-1.7B + WikiText-2 b=4: 36.00× lossless / 68.04× lossy (f32-raw baseline)  ·  18.00× / 34.02× (fp16-equiv)  ·  ΔPPL = 0.00% -->
    <g style="fill: #0f172a" transform="translate(103.890937 26.074375) scale(0.1 -0.1)">
     <defs>
      <path id="DejaVuSans-Bold-53" d="M 3834 4519 
@@ -3957,7 +3957,7 @@ z
     <use xlink:href="#DejaVuSans-Bold-30" transform="translate(7739.923828 0)"/>
     <use xlink:href="#DejaVuSans-Bold-25" transform="translate(7809.503906 0)"/>
    </g>
-   <!-- Bar ratios are vs. the Qwen0.5B per-N naive (57 MB at N=2 up to 173 MB at N=8) shown left; the (1) numbers are vs. the SmolLM2 2.48 GB f32-raw naive in the receipt -->
+   <!-- Bar ratios are vs. the Qwen0.5B per-N naive (57 MB at N=2 up to 173 MB at N=8) shown left; the (1) numbers are vs. the SmolLM2 2.16 GiB f32-raw naive in the receipt -->
    <g style="fill: #0f172a" transform="translate(26.019062 37.350312) scale(0.1 -0.1)">
     <defs>
      <path id="DejaVuSans-Bold-3b" d="M 716 1209 

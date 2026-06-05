@@ -8,7 +8,7 @@
   "total_with_sharing_bytes": 69811344,
   "naive_per_agent_full_cache": true,
   "naive_total_bytes": 2604662784,
-  "memory_reduction_factor": 37.31002205028455,
+  "memory_reduction_factor": 33.16444444444444,
   "shell_codec": "turbo_8bit_batched",
   "shared_codec": "fib_k4_n32_batched",
   "radii_compression": "Lossless",

@@ -471,8 +471,7 @@ mod tests {
                         .collect();
                     vecs.push(v);
                 }
-                let codes: Vec<PolarCode> =
-                    vecs.iter().map(|v| q.encode(v).unwrap()).collect();
+                let codes: Vec<PolarCode> = vecs.iter().map(|v| q.encode(v).unwrap()).collect();
                 // Per-vec baseline.
                 let mut per_vec: Vec<Vec<f32>> = Vec::new();
                 for c in &codes {

@@ -1,15 +1,15 @@
 cff-version: 1.2.0
-message: "If you reference this measurement in academic work, please cite it as below. The headline numbers are PPL-validated system-level compression ratios at N=8 agents, SmolLM2-1.7B + WikiText-2, ΔPPL = +0.00%. Two baseline denominators: f32-raw KV (40.53× lossless / 76.55× lossy) and fp16-equivalent (20.26× lossless / 38.27× lossy). proveKV does not reduce framework cache bytes directly — it decompresses to f32 and patches the cache. See CLAIMS.json for the per-baseline ratio breakdown and the receipts that justify each number."
+message: "If you reference this measurement in academic work, please cite it as below. The headline numbers are PPL-validated system-level compression ratios at N=8 agents, SmolLM2-1.7B + WikiText-2, ΔPPL = +0.00%. Two baseline denominators: f32-raw KV (36.00× lossless / 68.04× lossy) and fp16-equivalent (18.00× lossless / 34.02× lossy). proveKV does not reduce framework cache bytes directly — it decompresses to f32 and patches the cache. See CLAIMS.json for the per-baseline ratio breakdown and the receipts that justify each number."
 type: software
 # F7 audit: the title previously said "lossless at 11.13x", which was the
 # pool-only lossless ratio from the older `kv-lossless-11x` work. The
 # current default is two-tier (pool + per-agent shells) at the b=4
-# default: 40.50x lossless / 76.54x lossy vs f32-raw KV, both
+# default: 36.00x lossless / 68.04x lossy vs f32-raw KV, both
 # PPL-validated on SmolLM2-1.7B + WikiText-2 with delta_ppl_pct = +0.00%
 # (msi 2026-06-03, post-audit binary acf6424). fp16-equivalent baseline
-# gives 20.25x / 38.27x (half the f32 number, since compressed bytes are
+# gives 18.00x / 34.02x (half the f32 number, since compressed bytes are
 # dtype-agnostic).
-title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems — 40.50x lossless / 76.54x lossy PPL-validated at N=8 (vs f32-raw KV; 20.25x / 38.27x vs fp16-equivalent)"
+title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems — 36.00x lossless / 68.04x lossy PPL-validated at N=8 (vs f32-raw KV; 18.00x / 34.02x vs fp16-equivalent)"
 version: 1.1.0
 date-released: 2026-06-03
 license: MIT

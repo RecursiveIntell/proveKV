@@ -3,7 +3,7 @@ name = "provekv"
 version = "0.1.0-beta.1"
 edition = "2021"
 rust-version = "1.75"
-description = "proveKV — two-tier, receipted, content-addressed KV-cache pool. fib_k4_n32 cold tier + turbo_8bit hot tier. The pool is the system; the codecs are the primitives."
+description = "proveKV — two-tier, receipted, content-addressed KV-cache pool. fib_k4_n32 cold tier + turbo_4bit hot tier. The pool is the system; the codecs are the primitives."
 license = "MIT"
 repository = "https://github.com/RecursiveIntell/proveKV"
 readme = "README.md"
@@ -46,6 +46,8 @@ turbo = ["turbo-quant"]
 # serial baseline.
 parallel_pool = ["fib-quant?/parallel"]
 parallel_shell = []
+# Declared for gpu-bench cfg probes; GPU dispatch currently lives in gpu-backend.
+gpu = []
 
 [dev-dependencies]
 proptest = "1"

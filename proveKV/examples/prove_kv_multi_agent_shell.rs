@@ -106,7 +106,8 @@ struct BenchState {
 fn write_kv_binary(path: &PathBuf, manifest: &serde_json::Value, layers: &[(Vec<f32>, Vec<f32>)]) {
     let mut f = fs::File::create(path).expect("create kv bin");
     let manifest_bytes = serde_json::to_vec(manifest).expect("serialize manifest");
-    f.write_all(&(manifest_bytes.len() as u64).to_le_bytes()).unwrap();
+    f.write_all(&(manifest_bytes.len() as u64).to_le_bytes())
+        .unwrap();
     f.write_all(&manifest_bytes).unwrap();
     for (k, v) in layers {
         f.write_all(&(k.len() as u32).to_le_bytes()).unwrap();
@@ -130,7 +131,7 @@ fn main() {
         std::process::exit(1);
     }
     let lossy = args.iter().any(|a| a == "--lossy");
-    // Parse --bits N. Default 4 (PPL-validated 40.53x lossless / 76.55x lossy).
+    // Parse --bits N. Default 4 (PPL-validated 36.00x lossless / 68.04x lossy).
     let bits: u8 = match args.iter().position(|a| a == "--bits") {
         Some(i) if i + 1 < args.len() => args[i + 1]
             .parse()
@@ -183,7 +184,10 @@ fn main() {
     // effect on the manifest.
     policy.shell_codec = provekv::policy::turbo_batched_codec_id(
         policy.turbo_config.bits,
-        matches!(policy.turbo_config.radii_compression, RadiiCompression::Lossy),
+        matches!(
+            policy.turbo_config.radii_compression,
+            RadiiCompression::Lossy
+        ),
     );
 
     // Build the pool from the shared tokens.
@@ -199,8 +203,9 @@ fn main() {
         .iter()
         .map(|t| (t.id.clone(), t.vector.clone()))
         .collect();
-    let (pool, _receipt) = SharedKVPool::build_with_policy(&shared_corpus, &shape, seed, policy.clone())
-        .expect("build pool");
+    let (pool, _receipt) =
+        SharedKVPool::build_with_policy(&shared_corpus, &shape, seed, policy.clone())
+            .expect("build pool");
     eprintln!(
         "[multi-agent] pool built in {}ms: {} bytes, ratio={:.2}x codec={}",
         t0.elapsed().as_millis(),
@@ -212,7 +217,9 @@ fn main() {
     // Decode all pool layers and write shared_kv.bin.
     eprintln!("[multi-agent] decoding shared pool layers...");
     let t1 = Instant::now();
-    let shared_layers = pool.decompress_all_layers_with_seed(seed).expect("decompress shared");
+    let shared_layers = pool
+        .decompress_all_layers_with_seed(seed)
+        .expect("decompress shared");
     eprintln!(
         "[multi-agent] shared decoded in {}ms ({} layers)",
         t1.elapsed().as_millis(),
@@ -226,7 +233,11 @@ fn main() {
         "pool_id": pool.manifest.pool_id,
         "pool_size_bytes": pool.manifest.pool_size_bytes,
     });
-    write_kv_binary(&output_dir.join("shared_kv.bin"), &shared_manifest, &shared_layers);
+    write_kv_binary(
+        &output_dir.join("shared_kv.bin"),
+        &shared_manifest,
+        &shared_layers,
+    );
 
     let shared_pool_receipt = SharedPoolReceipt {
         pool_id: pool.manifest.pool_id.clone(),
@@ -354,7 +365,11 @@ fn main() {
         memory_reduction_factor: naive_total_bytes as f64 / total_with_sharing_bytes as f64,
         shell_codec: shell_codec_str.to_string(),
         shared_codec: CODEC_FIB_K4_N32_BATCHED.to_string(),
-        radii_compression: if lossy { "Lossy".to_string() } else { "Lossless".to_string() },
+        radii_compression: if lossy {
+            "Lossy".to_string()
+        } else {
+            "Lossless".to_string()
+        },
         lossy,
     };
     fs::write(

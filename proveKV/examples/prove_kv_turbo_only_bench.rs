@@ -67,10 +67,12 @@ struct BenchState {
     memory_reduction_factor: f64,
 }
 
+#[allow(dead_code)]
 fn write_kv_binary(path: &PathBuf, manifest: &serde_json::Value, layers: &[(Vec<f32>, Vec<f32>)]) {
     let mut f = fs::File::create(path).expect("create kv bin");
     let manifest_bytes = serde_json::to_vec(manifest).expect("serialize manifest");
-    f.write_all(&(manifest_bytes.len() as u64).to_le_bytes()).unwrap();
+    f.write_all(&(manifest_bytes.len() as u64).to_le_bytes())
+        .unwrap();
     f.write_all(&manifest_bytes).unwrap();
     for (k, v) in layers {
         f.write_all(&(k.len() as u32).to_le_bytes()).unwrap();
@@ -191,12 +193,7 @@ fn main() {
     let num_kv_heads = shape.num_kv_heads as u64;
     let head_dim = shape.head_dim as u64;
     let naive_total_bytes: u64 = n_agents as u64
-        * (input.shared_tokens.len() as u64
-            * num_layers
-            * num_kv_heads
-            * head_dim
-            * 2
-            * 4);
+        * (input.shared_tokens.len() as u64 * num_layers * num_kv_heads * head_dim * 2 * 4);
     let total_with_sharing_bytes = pool.manifest.pool_size_bytes + total_shell_bytes;
     let state = BenchState {
         tier: "turbo_only".to_string(),

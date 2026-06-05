@@ -127,7 +127,9 @@ mod tests {
         // Simple LCG for determinism
         let mut s = seed;
         let mut next = || {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             s
         };
         let codebook: Vec<f32> = (0..n_codewords * k)
@@ -151,19 +153,14 @@ mod tests {
             let (sample, codebook) = make_test_data(seed, 4, 32);
             let scalar = nearest_codeword_f32_scalar(&sample, &codebook, 4);
             let simd = nearest_codeword_f32(&sample, &codebook, 4);
-            assert_eq!(
-                scalar, simd,
-                "seed={seed}: scalar={scalar} simd={simd}"
-            );
+            assert_eq!(scalar, simd, "seed={seed}: scalar={scalar} simd={simd}");
         }
     }
 
     #[test]
     fn test_simd_exact_match_when_one_codeword_matches() {
         // Sample is exactly codeword 5
-        let codebook: Vec<f32> = (0..32 * 4)
-            .map(|i| (i as f32) * 0.01)
-            .collect();
+        let codebook: Vec<f32> = (0..32 * 4).map(|i| (i as f32) * 0.01).collect();
         let sample = codebook[5 * 4..5 * 4 + 4].to_vec();
         let result = nearest_codeword_f32(&sample, &codebook, 4);
         assert_eq!(result, 5);

@@ -229,7 +229,7 @@ pub struct TurboConfig {
 
 impl TurboConfig {
     /// The benchmark-proven configuration: 4-bit angles, 32 projections,
-    /// lossless f32 radii. PPL-validated (SmolLM2-1.7B, N=8): **40.53x** at
+    /// lossless f32 radii. PPL-validated (SmolLM2-1.7B, N=8): **36.00x** at
     /// bit-exact `delta_ppl_pct = +0.00%` (vs oracle). The 4-bit angle
     /// discretization is below the signal threshold for K/V in transformer
     /// attention, so reducing the per-angle bit count from 8 to 4 is a
@@ -245,7 +245,7 @@ impl TurboConfig {
 
     /// Lossy variant of the 4-bit config. 1-byte BlockLogU8 radii, ~4×
     /// smaller shell than 4-bit lossless. PPL-validated:
-    /// **76.55x** at bit-exact `delta_ppl_pct = +0.00%`.
+    /// **68.04x** at bit-exact `delta_ppl_pct = +0.00%`.
     pub fn default_4bit_lossy() -> Self {
         Self {
             bits: 4,
@@ -255,7 +255,7 @@ impl TurboConfig {
     }
 
     /// Legacy 8-bit configuration kept for back-compat. Superseded by
-    /// [`default_4bit`](Self::default_4bit) (40.53x) — same PPL, 10% larger.
+    /// [`default_4bit`](Self::default_4bit) (36.00x) — same PPL, 10% larger.
     pub fn default_8bit() -> Self {
         Self {
             bits: 8,
@@ -266,7 +266,7 @@ impl TurboConfig {
 
     /// Lossy variant of the 8-bit config. 1-byte radii, ~4× smaller shell
     /// than 8-bit lossless. Superseded by [`default_4bit_lossy`](Self::default_4bit_lossy)
-    /// (76.55x) — same PPL, 16% larger.
+    /// (68.04x) — same PPL, 16% larger.
     pub fn default_8bit_lossy() -> Self {
         Self {
             bits: 8,
@@ -317,9 +317,9 @@ impl TurboConfig {
 ///
 /// - Shared pool (cold tier): fib-quant at k=4, N=32 → 21.33× pool
 ///   ratio (vs f32-raw KV baseline)
-/// - Agent shells (hot tier): turbo-quant at b=4 (default) → 40.53×
-///   system lossless / 76.55× system lossy at N=8 (vs f32-raw KV
-///   baseline). At the legacy b=8 config, the system was 37.31× / 65.88×.
+/// - Agent shells (hot tier): turbo-quant at b=4 (default) → 36.00×
+///   system lossless / 68.04× system lossy at N=8 (vs f32-raw KV
+///   baseline). At the legacy b=8 config, the system was 33.16× / 58.56×.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompressionPolicy {
     /// Codec used for the shared pool (cold tier).
@@ -335,9 +335,9 @@ pub struct CompressionPolicy {
 impl CompressionPolicy {
     /// Create the default benchmark-proven two-tier policy.
     ///
-    /// Default is **b=4 lossless** (40.53x PPL-validated). PPL is bit-exact
+    /// Default is **b=4 lossless** (36.00x PPL-validated). PPL is bit-exact
     /// identical to the oracle at this bit rate, and 10% smaller than the
-    /// legacy b=8 config. For 76.55x, use [`default_two_tier_lossy`].
+    /// legacy b=8 config. For 68.04x, use [`default_two_tier_lossy`].
     pub fn default_two_tier() -> Self {
         Self {
             shared_codec: CODEC_FIB_K4_N32_BATCHED.into(),
@@ -347,7 +347,7 @@ impl CompressionPolicy {
         }
     }
 
-    /// Lossy variant of [`default_two_tier`]. 76.55x PPL-validated at b=4
+    /// Lossy variant of [`default_two_tier`]. 68.04x PPL-validated at b=4
     /// with `delta_ppl_pct = +0.00%` (lossless oracle, but BlockLogU8 radii).
     pub fn default_two_tier_lossy() -> Self {
         Self {
@@ -368,16 +368,14 @@ impl CompressionPolicy {
         if !allowed_shared.contains(&self.shared_codec.as_str()) {
             return Err(ProveKvError::InvalidPolicy(format!(
                 "shared_codec must be one of {:?}, got '{}'",
-                allowed_shared,
-                self.shared_codec
+                allowed_shared, self.shared_codec
             )));
         }
         let allowed_shell: &'static [&'static str] = allowed_shell_codecs();
         if !allowed_shell.contains(&self.shell_codec.as_str()) {
             return Err(ProveKvError::InvalidPolicy(format!(
                 "shell_codec must be one of {:?}, got '{}'",
-                allowed_shell,
-                self.shell_codec
+                allowed_shell, self.shell_codec
             )));
         }
         self.fib_config.validate()?;
@@ -423,23 +421,35 @@ mod tests {
         assert_eq!(turbo_batched_codec_id(8, true), "turbo_8bit_batched_lossy");
         assert_eq!(turbo_batched_codec_id(4, false), "turbo_4bit_batched");
         assert_eq!(turbo_batched_codec_id(2, false), "turbo_2bit_batched");
-        assert_eq!(turbo_batched_codec_id(16, true), "turbo_16bit_batched_lossy");
+        assert_eq!(
+            turbo_batched_codec_id(16, true),
+            "turbo_16bit_batched_lossy"
+        );
     }
 
     #[test]
     fn test_is_batched_turbo_accepts_all_bit_rates() {
         for bits in 2u8..=16 {
             let id = turbo_batched_codec_id(bits, false);
-            assert!(is_batched_turbo(&id), "lossless {bits}bit should be batched turbo");
+            assert!(
+                is_batched_turbo(&id),
+                "lossless {bits}bit should be batched turbo"
+            );
             let id_lossy = turbo_batched_codec_id(bits, true);
             assert!(
                 is_batched_turbo_lossy(&id_lossy),
                 "lossy {bits}bit should be batched turbo lossy"
             );
             // The lossy id should NOT match the lossless predicate.
-            assert!(!is_batched_turbo(&id_lossy), "lossy {bits}bit should NOT match lossless");
+            assert!(
+                !is_batched_turbo(&id_lossy),
+                "lossy {bits}bit should NOT match lossless"
+            );
             // And the lossless id should NOT match the lossy predicate.
-            assert!(!is_batched_turbo_lossy(&id), "lossless {bits}bit should NOT match lossy");
+            assert!(
+                !is_batched_turbo_lossy(&id),
+                "lossless {bits}bit should NOT match lossy"
+            );
         }
     }
 
@@ -449,7 +459,10 @@ mod tests {
         let mut policy = CompressionPolicy::default_two_tier();
         policy.turbo_config.bits = 4;
         policy.shell_codec = turbo_batched_codec_id(4, false);
-        assert!(policy.validate().is_ok(), "4bit lossless policy must validate");
+        assert!(
+            policy.validate().is_ok(),
+            "4bit lossless policy must validate"
+        );
         // 4bit lossy should also validate.
         policy.turbo_config.radii_compression = crate::policy::RadiiCompression::Lossy;
         policy.shell_codec = turbo_batched_codec_id(4, true);

@@ -1,11 +1,9 @@
 use std::time::Instant;
 
-use crate::codec::{create_codec, CompressedBlock, FibQuantAdapter, TurboQuantAdapter};
+use crate::codec::{create_codec, CompressedBlock, FibQuantAdapter};
 use crate::error::{ProveKvError, Result};
 use crate::manifest::PoolManifest;
-use crate::policy::{
-    is_batched_fib, CompressionPolicy, CODEC_FIB_K4_N32, CODEC_FIB_K4_N32_BATCHED,
-};
+use crate::policy::{is_batched_fib, CompressionPolicy, CODEC_FIB_K4_N32_BATCHED};
 use crate::receipt::{now_unix, PoolBuildReceipt};
 use crate::shape::KvTensorShape;
 
@@ -231,10 +229,7 @@ impl SharedKVPool {
                 ))
             })?;
             let cb = quantizer.codebook();
-            (
-                cb.codebook_digest.clone(),
-                cb.rotation_digest.clone(),
-            )
+            (cb.codebook_digest.clone(), cb.rotation_digest.clone())
         };
 
         let mut layers: Vec<PoolLayer> = Vec::with_capacity(num_layers);
@@ -272,13 +267,22 @@ impl SharedKVPool {
 
             let key_block =
                 CompressedBlock::new(CODEC_FIB_K4_N32_BATCHED.to_string(), encoded_keys, head_dim);
-            let value_block =
-                CompressedBlock::new(CODEC_FIB_K4_N32_BATCHED.to_string(), encoded_values, head_dim);
+            let value_block = CompressedBlock::new(
+                CODEC_FIB_K4_N32_BATCHED.to_string(),
+                encoded_values,
+                head_dim,
+            );
 
             let key_blocks = vec![key_block];
             let value_blocks = vec![value_block];
-            let layer_bytes: u64 = key_blocks.iter().map(|b| b.compressed_bytes as u64).sum::<u64>()
-                + value_blocks.iter().map(|b| b.compressed_bytes as u64).sum::<u64>();
+            let layer_bytes: u64 = key_blocks
+                .iter()
+                .map(|b| b.compressed_bytes as u64)
+                .sum::<u64>()
+                + value_blocks
+                    .iter()
+                    .map(|b| b.compressed_bytes as u64)
+                    .sum::<u64>();
 
             let mut layer = PoolLayer {
                 layer_index: layer_idx as u32,
@@ -374,7 +378,8 @@ impl SharedKVPool {
             policy.clone(),
             seed,
             built_at_unix,
-        ).with_backend(backend);
+        )
+        .with_backend(backend);
 
         Ok((
             Self {
@@ -447,10 +452,7 @@ impl SharedKVPool {
     /// `num_tokens * num_kv_heads * head_dim` and is laid out so that
     /// `.reshape(1, num_tokens, num_kv_heads, head_dim).transpose(1, 2)`
     /// gives `[1, num_kv_heads, T, head_dim]` as the Python bench expects.
-    pub fn decompress_all_layers_with_seed(
-        &self,
-        seed: u64,
-    ) -> Result<Vec<(Vec<f32>, Vec<f32>)>> {
+    pub fn decompress_all_layers_with_seed(&self, seed: u64) -> Result<Vec<(Vec<f32>, Vec<f32>)>> {
         let num_layers = self.layers.len();
         let num_tokens = self.manifest.num_shared_tokens as usize;
         let num_kv_heads = self.manifest.shape.num_kv_heads as usize;
@@ -511,14 +513,10 @@ impl SharedKVPool {
                             .into(),
                     )
                 })?;
-            let k_decoded_all: Vec<Vec<f32>> = fib_adapter.decode_batch_compact(
-                &layer.key_blocks[0].encoded_payload,
-                seed,
-            )?;
-            let v_decoded_all: Vec<Vec<f32>> = fib_adapter.decode_batch_compact(
-                &layer.value_blocks[0].encoded_payload,
-                seed,
-            )?;
+            let k_decoded_all: Vec<Vec<f32>> =
+                fib_adapter.decode_batch_compact(&layer.key_blocks[0].encoded_payload, seed)?;
+            let v_decoded_all: Vec<Vec<f32>> =
+                fib_adapter.decode_batch_compact(&layer.value_blocks[0].encoded_payload, seed)?;
             if k_decoded_all.len() != v_decoded_all.len() {
                 return Err(ProveKvError::Internal(format!(
                     "layer {layer_idx}: batched K/V vector count mismatch ({} vs {})",
@@ -537,15 +535,21 @@ impl SharedKVPool {
             }
             let num_tokens = n_pairs / num_heads;
             // Per-head output: keys[head_idx] = concatenation of every token's K for that head.
-            let mut keys_per_head: Vec<Vec<f32>> = vec![Vec::with_capacity(num_tokens * head_dim); num_heads];
-            let mut values_per_head: Vec<Vec<f32>> = vec![Vec::with_capacity(num_tokens * head_dim); num_heads];
+            let mut keys_per_head: Vec<Vec<f32>> =
+                vec![Vec::with_capacity(num_tokens * head_dim); num_heads];
+            let mut values_per_head: Vec<Vec<f32>> =
+                vec![Vec::with_capacity(num_tokens * head_dim); num_heads];
             for token_idx in 0..num_tokens {
                 for head_idx in 0..num_heads {
                     let idx = token_idx * num_heads + head_idx;
                     if k_decoded_all[idx].len() != head_dim {
                         return Err(ProveKvError::Internal(format!(
                             "decoded key length {} != head_dim {} (layer {}, token {}, head {})",
-                            k_decoded_all[idx].len(), head_dim, layer_idx, token_idx, head_idx
+                            k_decoded_all[idx].len(),
+                            head_dim,
+                            layer_idx,
+                            token_idx,
+                            head_idx
                         )));
                     }
                     keys_per_head[head_idx].extend_from_slice(&k_decoded_all[idx]);
@@ -588,7 +592,11 @@ impl SharedKVPool {
                 if k_decoded.len() != head_dim {
                     return Err(ProveKvError::Internal(format!(
                         "decoded key length {} != head_dim {} (layer {}, token {}, head {})",
-                        k_decoded.len(), head_dim, layer_idx, token_idx, head_idx
+                        k_decoded.len(),
+                        head_dim,
+                        layer_idx,
+                        token_idx,
+                        head_idx
                     )));
                 }
                 keys_per_head[head_idx].extend_from_slice(&k_decoded);
@@ -724,10 +732,16 @@ mod tests {
             );
             assert_eq!(layer.key_blocks.len(), 1, "exactly 1 batched K block");
             assert_eq!(layer.value_blocks.len(), 1, "exactly 1 batched V block");
-            assert_eq!(layer.key_blocks[0].codec, crate::policy::CODEC_FIB_K4_N32_BATCHED);
+            assert_eq!(
+                layer.key_blocks[0].codec,
+                crate::policy::CODEC_FIB_K4_N32_BATCHED
+            );
             assert_eq!(layer.key_blocks[0].codec, layer.value_blocks[0].codec);
         }
-        assert_eq!(pool.manifest.shared_codec, crate::policy::CODEC_FIB_K4_N32_BATCHED);
+        assert_eq!(
+            pool.manifest.shared_codec,
+            crate::policy::CODEC_FIB_K4_N32_BATCHED
+        );
     }
 
     /// F5: the pool receipt must carry non-empty codebook/rotation digests.
@@ -751,14 +765,12 @@ mod tests {
         // "non-empty and longer than the schema-name prefix a real digest
         // would never have." 32 chars minimum, no whitespace.
         assert!(
-            receipt.codebook_digest.len() >= 32
-                && !receipt.codebook_digest.contains(' '),
+            receipt.codebook_digest.len() >= 32 && !receipt.codebook_digest.contains(' '),
             "codebook_digest should be a real hash (>=32 chars, no whitespace), got '{}'",
             receipt.codebook_digest
         );
         assert!(
-            receipt.rotation_digest.len() >= 32
-                && !receipt.rotation_digest.contains(' '),
+            receipt.rotation_digest.len() >= 32 && !receipt.rotation_digest.contains(' '),
             "rotation_digest should be a real hash (>=32 chars, no whitespace), got '{}'",
             receipt.rotation_digest
         );

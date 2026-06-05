@@ -25,7 +25,7 @@ fn decode_batch_fast_matches_per_call_decode() {
             .map(|j| ((i * 17 + j * 3 + 1) as f32 * 0.1).sin())
             .collect();
         codes.push(quantizer.encode(&x).unwrap());
-    }    // Reference: per-call decode.
+    } // Reference: per-call decode.
     let reference: Vec<Vec<f32>> = codes.iter().map(|c| quantizer.decode(c).unwrap()).collect();
 
     // Fast path: single call.

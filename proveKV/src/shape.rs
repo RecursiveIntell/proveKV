@@ -43,7 +43,9 @@ impl KvTensorShape {
             return Err(ProveKvError::InvalidShape("num_heads must be > 0".into()));
         }
         if self.num_kv_heads == 0 {
-            return Err(ProveKvError::InvalidShape("num_kv_heads must be > 0".into()));
+            return Err(ProveKvError::InvalidShape(
+                "num_kv_heads must be > 0".into(),
+            ));
         }
         if self.head_dim == 0 {
             return Err(ProveKvError::InvalidShape("head_dim must be > 0".into()));

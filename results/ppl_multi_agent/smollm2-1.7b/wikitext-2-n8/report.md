@@ -9,10 +9,10 @@
 
 | Run | oracle_ppl | roundtrip_ppl | delta_ppl_pct | compression (N=8) |
 |---|---|---|---|---|
-| **N=8 LOSSLESS** (TQB1 + FB2) | 4.8125 | 4.8125 | **+0.00%** | **37.31×** |
-| **N=8 LOSSY** (TQB1-L + FB2) | 4.8125 | 4.8125 | **+0.00%** | **65.88×** |
+| **N=8 LOSSLESS** (TQB1 + FB2) | 4.8125 | 4.8125 | **+0.00%** | **33.16×** |
+| **N=8 LOSSY** (TQB1-L + FB2) | 4.8125 | 4.8125 | **+0.00%** | **58.56×** |
 
-**Both the lossless (37.31×) and lossy (65.88×) N=8 system-level
+**Both the lossless (33.16×) and lossy (58.56×) N=8 system-level
 compression ratios are now backed by a real, end-to-end PPL
 validation on a real 1.7B LLM.** PPL delta is +0.00% in both
 cases at 1024 tokens on WikiText-2.
@@ -20,7 +20,7 @@ cases at 1024 tokens on WikiText-2.
 The 41.17× / 72.25× numbers mentioned elsewhere in the README
 are from a separate synthetic-corpus bench on Qwen2.5-0.5B
 (smaller KV-head count, different absolute sizes). The
-37.31× / 65.88× numbers in this report are the real PPL-validated
+33.16× / 58.56× numbers in this report are the real PPL-validated
 ratios for SmolLM2-1.7B-Instruct.
 
 Per-tier breakdown at N=8 (from the actual msi receipts):
@@ -29,9 +29,9 @@ Per-tier breakdown at N=8 (from the actual msi receipts):
 - Per-agent shell (28 unique tokens, TQB1-L lossy): **3,098,400 B (2.95 MB)**
 - N=8 system total lossless: 14.75 MB + 8 × 6.56 MB = 67.25 MB
 - N=8 system total lossy: 14.75 MB + 8 × 2.95 MB = 38.36 MB
-- Naive (no dedup, fp32 per-agent full cache): 2,604.7 MB
-- Lossless system ratio: 2,604.7 MB / 67.25 MB = **37.31×**
-- Lossy system ratio: 2,604.7 MB / 38.36 MB = **65.88×**
+- Naive (no dedup, fp32 per-agent full cache): 2,315.3 MB
+- Lossless system ratio: 2,315.3 MB / 67.25 MB = **33.16×**
+- Lossy system ratio: 2,315.3 MB / 38.36 MB = **58.56×**
 
 ## Methodology
 
@@ -74,8 +74,8 @@ Both tiers produce byte-identical PPL to the oracle at 1024 tokens on SmolLM2-1.
 
 ## What this does NOT prove
 
-- The bench is at 1024 tokens on one model (SmolLM2-1.7B) on one corpus (WikiText-2). The 37.31× / 65.88× numbers here are valid for this configuration; whether they hold at longer context, different model, or different corpus is unknown.
-- The 41.17× / 72.25× numbers mentioned in the README's per-tier table are a SEPARATE measurement on Qwen2.5-0.5B (kv_heads=2) with a synthetic corpus — they are not PPL-validated. The 37.31× / 65.88× numbers here are the real PPL-validated ratios for SmolLM2-1.7B-Instruct.
+- The bench is at 1024 tokens on one model (SmolLM2-1.7B) on one corpus (WikiText-2). The 33.16× / 58.56× numbers here are valid for this configuration; whether they hold at longer context, different model, or different corpus is unknown.
+- The 41.17× / 72.25× numbers mentioned in the README's per-tier table are a SEPARATE measurement on Qwen2.5-0.5B (kv_heads=2) with a synthetic corpus — they are not PPL-validated. The 33.16× / 58.56× numbers here are the real PPL-validated ratios for SmolLM2-1.7B-Instruct.
 - The PPL delta at longer context (4K, 8K, 32K) is unknown. At 1024 tokens, both tiers are within the noise floor of the 1.7B model's predictions.
 - The PPL delta on different corpora (C4, code, multilingual, instruction-following) is unknown.
 - The PPL delta on different models (Qwen2.5, Llama, Mistral) is unknown.

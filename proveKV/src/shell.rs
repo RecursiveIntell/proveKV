@@ -84,10 +84,7 @@ impl AgentShell {
     /// tensors in HuggingFace-friendly layout. The output per layer is
     /// `(K_flat, V_flat)` with shape `[num_unique_tokens * num_kv_heads * head_dim]`,
     /// laid out as `[t0_h0_d0.., t0_h1_d0.., ..., t1_h0_d0.., ...]`.
-    pub fn decompress_all_layers_with_seed(
-        &self,
-        seed: u64,
-    ) -> Result<Vec<(Vec<f32>, Vec<f32>)>> {
+    pub fn decompress_all_layers_with_seed(&self, seed: u64) -> Result<Vec<(Vec<f32>, Vec<f32>)>> {
         let head_dim = self.shell_manifest.head_dim;
         let num_kv_heads = self.shell_manifest.num_kv_heads as usize;
         let num_unique_tokens = self.shell_manifest.num_unique_tokens as usize;
@@ -104,17 +101,16 @@ impl AgentShell {
         // of shape `[num_tokens, num_kv_heads, head_dim]` (so that the
         // Python bench's `.reshape(1, num_tokens, num_kv_heads, head_dim)
         // .transpose(1, 2)` yields `[1, num_kv_heads, num_tokens, head_dim]`).
-        let mut flatten =
-            |per_head: &[Vec<f32>]| -> Vec<f32> {
-                let mut out = Vec::with_capacity(num_unique_tokens * num_kv_heads * head_dim);
-                for t in 0..num_unique_tokens {
-                    for h in 0..num_kv_heads {
-                        let base = t * head_dim;
-                        out.extend_from_slice(&per_head[h][base..base + head_dim]);
-                    }
+        let flatten = |per_head: &[Vec<f32>]| -> Vec<f32> {
+            let mut out = Vec::with_capacity(num_unique_tokens * num_kv_heads * head_dim);
+            for t in 0..num_unique_tokens {
+                for h in 0..num_kv_heads {
+                    let base = t * head_dim;
+                    out.extend_from_slice(&per_head[h][base..base + head_dim]);
                 }
-                out
-            };
+            }
+            out
+        };
 
         let mut out = Vec::with_capacity(self.unique_layers.len());
         for layer in &self.unique_layers {
@@ -252,8 +248,7 @@ pub fn materialize_shell(
             Vec::with_capacity(num_unique_tokens as usize * num_kv_heads);
         for (_token_id, vec) in agent_tokens.iter() {
             for head_idx in 0..num_kv_heads {
-                let base_offset =
-                    layer_idx * num_kv_heads * head_dim * 2 + head_idx * head_dim * 2;
+                let base_offset = layer_idx * num_kv_heads * head_dim * 2 + head_idx * head_dim * 2;
                 let key_end = base_offset + head_dim;
                 let value_end = key_end + head_dim;
                 key_inputs.push(vec[base_offset..key_end].to_vec());

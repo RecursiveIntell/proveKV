@@ -2595,7 +2595,7 @@ z
     </g>
    </g>
    <g id="text_14">
-    <!-- 40.50× vs f32-raw -->
+    <!-- 36.00× vs f32-raw -->
     <g style="fill: #7c3aed" transform="translate(741.83807 183.393988) scale(0.09 -0.09)">
      <defs>
       <path id="DejaVuSans-Bold-34" d="M 2356 3675 
@@ -2713,7 +2713,7 @@ z
      <use xlink:href="#DejaVuSans-Bold-61" transform="translate(867.919922 0)"/>
      <use xlink:href="#DejaVuSans-Bold-77" transform="translate(935.400391 0)"/>
     </g>
-    <!-- 20.25× vs fp16 -->
+    <!-- 18.00× vs fp16 -->
     <g style="fill: #7c3aed" transform="translate(741.83807 193.47202) scale(0.09 -0.09)">
      <defs>
       <path id="DejaVuSans-Bold-70" d="M 1656 506 
@@ -3586,7 +3586,7 @@ z
    </g>
   </g>
   <g id="text_20">
-   <!-- 40.50x is the PPL-validated SmolLM2-1.7B N=8 system ratio at the b=4 default (vs. 2.48 GB f32-raw naive per the receipt). For fp16/bf16 framework caches, the same receipts give 20.25x; see CLAIMS.json for the per-baseline breakdown. -->
+   <!-- 36.00x is the PPL-validated SmolLM2-1.7B N=8 system ratio at the b=4 default (vs. 2.16 GiB f32-raw naive per the receipt). For fp16/bf16 framework caches, the same receipts give 18.00x; see CLAIMS.json for the per-baseline breakdown. -->
    <g style="fill: #475569" transform="translate(7.2 388.896234) scale(0.075 -0.075)">
     <defs>
      <path id="DejaVuSans-Oblique-35" d="M 3719 4666 

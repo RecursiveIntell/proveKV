@@ -76,8 +76,7 @@ fn main() {
     let output_path = PathBuf::from(&args[2]);
 
     let input_bytes = fs::read(&input_path).expect("read input");
-    let input: InputJson =
-        serde_json::from_slice(&input_bytes).expect("parse input json");
+    let input: InputJson = serde_json::from_slice(&input_bytes).expect("parse input json");
 
     let attn_type = match input.shape.attention_type.as_str() {
         "MHA" => AttentionType::MHA,
@@ -172,9 +171,7 @@ fn main() {
     let layer_data: Vec<Vec<u8>> = (0..num_layers)
         .into_par_iter()
         .map(|layer_idx| {
-            let quantizer = adapter
-                .build_quantizer(seed)
-                .expect("create quantizer");
+            let quantizer = adapter.build_quantizer(seed).expect("create quantizer");
             let layer = &pool.layers[layer_idx];
             // Deserialize all K and V codes for this layer.
             //

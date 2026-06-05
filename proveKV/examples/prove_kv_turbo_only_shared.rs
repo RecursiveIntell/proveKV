@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use provekv::codec::TurboQuantAdapter;
 use provekv::policy::TurboConfig;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct InputJson {
@@ -24,7 +24,8 @@ struct ShapeJson {
 
 #[derive(Debug, Deserialize, Clone)]
 struct TokenJson {
-    id: String,
+    #[serde(rename = "id")]
+    _id: String,
     vector: Vec<f32>,
 }
 
@@ -38,7 +39,6 @@ fn main() {
     let head_dim = input.shape.head_dim;
     let num_layers = input.shape.num_layers as usize;
     let num_kv_heads = input.shape.num_kv_heads as usize;
-    let num_tokens = input.shared_tokens.len();
 
     // Each token's vector is [layer0_head0_k..., layer0_head0_v..., layer0_head1_k..., ...].
     // The per-vector size for one (layer, head) is head_dim * 2.

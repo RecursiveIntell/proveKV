@@ -146,19 +146,19 @@ def make_architecture():
     ax.plot([10.80, 10.85], [4.85, 4.85], color=C_LOSSY, linewidth=1.6, zorder=2)
     ax.plot([10.80, 10.85], [1.0, 1.0], color=C_LOSSY, linewidth=1.6, zorder=2)
     # Show the PPL-validated number, not the size-only Qwen0.5B number.
-    # 40.50x is the SmolLM2-1.7B + WikiText-2 N=8 system reduction
+    # 36.00x is the SmolLM2-1.7B + WikiText-2 N=8 system reduction
     # at the new b=4 default (the current default two-tier policy:
     # fib_k4_n32_batched cold + turbo_4bit_batched hot), with both
     # tiers producing +0.00% PPL delta. The 41.17x / 72.25x
     # size-only Qwen0.5B synthetic numbers are documented in the
     # README table; the architecture diagram headline is the
     # PPL-validated one. (For fp16-equivalent framework caches,
-    # the same receipts give 20.25x; see CLAIMS.json.)
+    # the same receipts give 18.00x; see CLAIMS.json.)
     # Headline shows BOTH baselines (per Josh's request and the CLAIMS.json policy).
     # f32-raw is the on-disk storage headline; fp16-equivalent is the
     # paper-comparable number for fp16 framework-cache readers.
     ax.text(11.05, 2.92,
-            "40.50× vs f32-raw\n20.25× vs fp16\nsystem-level\n(at N=8,\nb=4 PPL-validated)",
+            "36.00× vs f32-raw\n18.00× vs fp16\nsystem-level\n(at N=8,\nb=4 PPL-validated)",
             ha="left", va="center", fontsize=9, fontweight="bold", color=C_FIB)
 
     # ---- Title and subtitle ----
@@ -179,10 +179,10 @@ def make_architecture():
     ax.legend(handles=leg_items, loc="lower left", bbox_to_anchor=(0.0, -0.02),
               frameon=False, ncol=2, fontsize=9, handlelength=2.0)
 
-    # Footer note: explain the 40.50x naive definition
+    # Footer note: explain the 36.00x naive definition
     fig.text(0.5, 0.02,
-             "40.50x is the PPL-validated SmolLM2-1.7B N=8 system ratio at the b=4 default (vs. 2.48 GB f32-raw naive per the receipt). "
-             "For fp16/bf16 framework caches, the same receipts give 20.25x; see CLAIMS.json for the per-baseline breakdown.",
+             "36.00x is the PPL-validated SmolLM2-1.7B N=8 system ratio at the b=4 default (vs. 2.16 GiB f32-raw naive per the receipt). "
+             "For fp16/bf16 framework caches, the same receipts give 18.00x; see CLAIMS.json for the per-baseline breakdown.",
              ha="center", va="bottom", fontsize=7.5, color=C_MUTED, style="italic")
 
     fig.tight_layout()
@@ -200,15 +200,15 @@ def make_architecture():
 #   - N=8 bars (BOTH Qwen0.5B size-only AND SmolLM2-1.7B PPL-validated):
 #     - Qwen0.5B: same path as above (41.17x / 72.25x)
 #     - SmolLM2-1.7B PPL-validated: results/ppl_multi_agent/smollm2-1.7b/wikitext-2-n8/state_{lossless|lossy}.json
-#       (37.31x / 65.88x, oracle_ppl = roundtrip_ppl = 4.8125, delta_ppl_pct = 0.0)
-# PPL_VALIDATED_N8 now reflects the b=4 default. Legacy b=8 was 37.31x / 65.88x.
+#       (33.16x / 58.56x, oracle_ppl = roundtrip_ppl = 4.8125, delta_ppl_pct = 0.0)
+# PPL_VALIDATED_N8 now reflects the b=4 default. Legacy b=8 was 33.16x / 58.56x.
 # The b=4 default compresses tighter (smaller per-vec shell at 4-bit angles) and
 # PPL is still bit-exact identical to the oracle (4-bit angle discretization
 # is below the K/V signal threshold at 1024 tokens).
 PPL_VALIDATED_N8 = {
-    "lossless_x": 40.5040,   # SmolLM2-1.7B, 8 agents, 800 shared, 28 unique, 1024 tokens, WikiText-2, b=4 default
-    "lossy_x":    76.5431,
-    "oracle_ppl": 6.1328,    # PPL window [128, 1024) at the b=4 default
+    "lossless_x": 36.0036,   # SmolLM2-1.7B, 8 agents, 800 shared, 28 unique, 1024 tokens, WikiText-2, b=4 default
+    "lossy_x":    68.0383,
+    "oracle_ppl": 6.1328,    # PPL window [800, 1024) at the b=4 default
     "delta_ppl":  0.0,
     "receipt":    "results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/",
 }
@@ -251,7 +251,7 @@ def make_n_scaling():
     # ---- Right panel: proveKV lossless + lossy ----
     # The N=2..6 bars use Qwen0.5B synthetic numbers (size-only).
     # The N=8 bars use the SAME Qwen0.5B numbers PLUS a parallel PPL-validated
-    # callout for the SmolLM2-1.7B real-LLM numbers (37.31x / 65.88x).
+    # callout for the SmolLM2-1.7B real-LLM numbers (33.16x / 58.56x).
     b1 = ax_pk.bar([i - width/2 - 0.04 for i in x], lossless_mb, width,
                    color=C_FIB, label="lossless (TQB1)", edgecolor="white", zorder=2)
     b2 = ax_pk.bar([i + width/2 + 0.04 for i in x], lossy_mb, width,
@@ -295,8 +295,8 @@ def make_n_scaling():
     ax_pk.set_ylabel("Total system memory (MB)")
 
     fig.suptitle("Multi-agent memory scaling at 1024 tokens, 80% shared prefix  ·  Qwen2.5-0.5B baseline (N=2..6)\n"
-                 "(1) N=8 SmolLM2-1.7B + WikiText-2 b=4: 40.50× lossless / 76.54× lossy (f32-raw baseline)  ·  20.25× / 38.27× (fp16-equiv)  ·  ΔPPL = 0.00%\n"
-                 "Bar ratios are vs. the Qwen0.5B per-N naive (57 MB at N=2 up to 173 MB at N=8) shown left; the (1) numbers are vs. the SmolLM2 2.48 GB f32-raw naive in the receipt",
+                 "(1) N=8 SmolLM2-1.7B + WikiText-2 b=4: 36.00× lossless / 68.04× lossy (f32-raw baseline)  ·  18.00× / 34.02× (fp16-equiv)  ·  ΔPPL = 0.00%\n"
+                 "Bar ratios are vs. the Qwen0.5B per-N naive (57 MB at N=2 up to 173 MB at N=8) shown left; the (1) numbers are vs. the SmolLM2 2.16 GiB f32-raw naive in the receipt",
                  fontsize=10, fontweight="bold", y=1.02)
     fig.tight_layout()
     fig.savefig(OUT / "n_scaling.svg", format="svg", bbox_inches="tight")

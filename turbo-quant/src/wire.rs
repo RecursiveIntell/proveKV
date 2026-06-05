@@ -8,7 +8,7 @@ use crate::{
     error::{Result, TurboQuantError},
     polar::PolarCode,
     qjl::QjlSketch,
-    radius::{self, CompressedRadiiV1, RadiusCodecProfileV1},
+    radius,
     rotation::RotationKind,
     turbo::{TurboCode, TurboMode, TurboQuantizer},
 };
@@ -318,9 +318,7 @@ impl TurboCodeWireV1 {
         };
         let radii_bytes_per_vec: usize = match radii_codec {
             radius::RadiusCodecProfileV1::F32 => polar_block_count as usize * 4,
-            radius::RadiusCodecProfileV1::BlockLinearU16 => {
-                polar_block_count as usize * 2 + 8
-            }
+            radius::RadiusCodecProfileV1::BlockLinearU16 => polar_block_count as usize * 2 + 8,
             radius::RadiusCodecProfileV1::BlockLogU8 => polar_block_count as usize + 8,
         };
         let vector_payload_len = checked_u32(
@@ -348,8 +346,16 @@ impl TurboCodeWireV1 {
         bytes.extend_from_slice(&vector_payload_len.to_le_bytes());
         for code in codes {
             // Compress radii with the requested profile and write the bytes.
-            let compressed = radius::CompressedRadiiV1::compress(&code.polar_code.radii, radii_codec)?;
-            if compressed.payload.len() + (if matches!(radii_codec, radius::RadiusCodecProfileV1::F32) { 0 } else { 8 }) != radii_bytes_per_vec {
+            let compressed =
+                radius::CompressedRadiiV1::compress(&code.polar_code.radii, radii_codec)?;
+            if compressed.payload.len()
+                + (if matches!(radii_codec, radius::RadiusCodecProfileV1::F32) {
+                    0
+                } else {
+                    8
+                })
+                != radii_bytes_per_vec
+            {
                 return Err(TurboQuantError::MalformedCode {
                     reason: format!(
                         "compressed radii payload {} + header != expected {}",
@@ -560,8 +566,6 @@ impl TurboCodeWireV1 {
         cursor.finish()?;
         Ok(codes)
     }
-
-
 }
 
 fn checked_u32(value: usize, field: &str) -> Result<u32> {
@@ -816,13 +820,16 @@ mod tests {
     // (radii_count * 4 + angle_packed_len + sign_packed_len), so a single
     // vector_payload_len is sufficient.
 
-
     #[test]
     fn batched_wire_roundtrip_matches_single() {
         use crate::turbo::TurboQuantizer;
         let q = TurboQuantizer::new(64, 8, 32, 42).unwrap();
         let vectors: Vec<Vec<f32>> = (0..16)
-            .map(|i| (0..64).map(|j| ((i * 64 + j) as f32 * 0.013).sin()).collect())
+            .map(|i| {
+                (0..64)
+                    .map(|j| ((i * 64 + j) as f32 * 0.013).sin())
+                    .collect()
+            })
             .collect();
         let codes: Vec<_> = vectors.iter().map(|v| q.encode(v).unwrap()).collect();
         let single_bytes: Vec<Vec<u8>> = codes
@@ -888,7 +895,11 @@ mod tests {
         use crate::turbo::TurboQuantizer;
         let q = TurboQuantizer::new(64, 8, 32, 42).unwrap();
         let vectors: Vec<Vec<f32>> = (0..16)
-            .map(|i| (0..64).map(|j| ((i * 64 + j) as f32 * 0.013 + 0.1).sin().abs() + 0.1).collect())
+            .map(|i| {
+                (0..64)
+                    .map(|j| ((i * 64 + j) as f32 * 0.013 + 0.1).sin().abs() + 0.1)
+                    .collect()
+            })
             .collect();
         let codes: Vec<_> = vectors.iter().map(|v| q.encode(v).unwrap()).collect();
 
@@ -952,7 +963,11 @@ mod tests {
         use crate::turbo::TurboQuantizer;
         let q = TurboQuantizer::new(64, 8, 32, 42).unwrap();
         let vectors: Vec<Vec<f32>> = (0..4)
-            .map(|i| (0..64).map(|j| ((i * 64 + j) as f32 * 0.013).sin()).collect())
+            .map(|i| {
+                (0..64)
+                    .map(|j| ((i * 64 + j) as f32 * 0.013).sin())
+                    .collect()
+            })
             .collect();
         let codes: Vec<_> = vectors.iter().map(|v| q.encode(v).unwrap()).collect();
         let lossy_bytes = TurboCodeWireV1::encode_batch_with_radii(

@@ -1,5 +1,5 @@
-use std::any::Any;
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 
 use crate::error::Result;
 use crate::policy::CodecId;
@@ -246,12 +246,14 @@ impl TurboQuantAdapter {
     /// Most useful when the caller has a full layer's worth of vectors
     /// (num_tokens * num_kv_heads * 2 K+V) to encode at once.
     pub fn encode_batch_compact(&self, vectors: &[&[f32]], seed: u64) -> Result<Vec<u8>> {
-        let quantizer = turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed)
-            .map_err(|e| {
-                crate::error::ProveKvError::CompressionFailed(format!(
-                    "turbo quantizer init failed: {e}"
-                ))
-            })?;
+        let quantizer =
+            turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed).map_err(
+                |e| {
+                    crate::error::ProveKvError::CompressionFailed(format!(
+                        "turbo quantizer init failed: {e}"
+                    ))
+                },
+            )?;
 
         let codes: Vec<turbo_quant::TurboCode> = vectors
             .iter()
@@ -291,18 +293,21 @@ impl TurboQuantAdapter {
     /// Batched decode using the TQB1 wire format. Returns a Vec<f32> per
     /// input vector (in the same order).
     pub fn decode_batch_compact(&self, payload: &[u8], seed: u64) -> Result<Vec<Vec<f32>>> {
-        let quantizer = turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed)
-            .map_err(|e| {
+        let quantizer =
+            turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed).map_err(
+                |e| {
+                    crate::error::ProveKvError::DecompressionFailed(format!(
+                        "turbo quantizer init failed: {e}"
+                    ))
+                },
+            )?;
+
+        let codes =
+            turbo_quant::TurboCodeWireV1::decode_batch(payload, &quantizer).map_err(|e| {
                 crate::error::ProveKvError::DecompressionFailed(format!(
-                    "turbo quantizer init failed: {e}"
+                    "turbo batched wire decode failed: {e}"
                 ))
             })?;
-
-        let codes = turbo_quant::TurboCodeWireV1::decode_batch(payload, &quantizer).map_err(|e| {
-            crate::error::ProveKvError::DecompressionFailed(format!(
-                "turbo batched wire decode failed: {e}"
-            ))
-        })?;
 
         // Use the quantizer's batch decode (PolarQuantizer::decode_batch
         // → RotationBackend::apply_inverse_batch). Same numerical output
@@ -353,7 +358,10 @@ impl KVecCodec for TurboQuantAdapter {
         // smaller per block, 2.4x system-level memory reduction on multi-agent
         // benchmarks. See results/bench/multi_agent_compact/.
         turbo_quant::TurboCodeWireV1::encode(&code, &quantizer).map_err(|e| {
-            crate::error::ProveKvError::CompressionFailed(format!("turbo wire encode failed: {}", e))
+            crate::error::ProveKvError::CompressionFailed(format!(
+                "turbo wire encode failed: {}",
+                e
+            ))
         })
     }
 
@@ -361,35 +369,30 @@ impl KVecCodec for TurboQuantAdapter {
         // Compact binary format is preferred (header starts with TURBO_CODE_WIRE_MAGIC
         // = "TQW1", 4 bytes), but fall back to JSON for backward compat with shells
         // written by older proveKV versions.
-        let code: turbo_quant::TurboCode = if payload.len() >= 4
-            && &payload[0..4] == turbo_quant::TURBO_CODE_WIRE_MAGIC
-        {
-            let quantizer = turbo_quant::TurboQuantizer::new(
-                self.dim,
-                self.bits,
-                self.projections,
-                seed,
-            )
-            .map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "turbo quantizer init failed: {}",
-                    e
-                ))
-            })?;
-            turbo_quant::TurboCodeWireV1::decode(payload, &quantizer).map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "turbo wire decode failed: {}",
-                    e
-                ))
-            })?
-        } else {
-            serde_json::from_slice(payload).map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "turbo code deserialize failed: {}",
-                    e
-                ))
-            })?
-        };
+        let code: turbo_quant::TurboCode =
+            if payload.len() >= 4 && &payload[0..4] == turbo_quant::TURBO_CODE_WIRE_MAGIC {
+                let quantizer =
+                    turbo_quant::TurboQuantizer::new(self.dim, self.bits, self.projections, seed)
+                        .map_err(|e| {
+                        crate::error::ProveKvError::DecompressionFailed(format!(
+                            "turbo quantizer init failed: {}",
+                            e
+                        ))
+                    })?;
+                turbo_quant::TurboCodeWireV1::decode(payload, &quantizer).map_err(|e| {
+                    crate::error::ProveKvError::DecompressionFailed(format!(
+                        "turbo wire decode failed: {}",
+                        e
+                    ))
+                })?
+            } else {
+                serde_json::from_slice(payload).map_err(|e| {
+                    crate::error::ProveKvError::DecompressionFailed(format!(
+                        "turbo code deserialize failed: {}",
+                        e
+                    ))
+                })?
+            };
 
         // Reconstruct from polar component via independent PolarQuantizer.
         // QJL residual is lossy and not invertible, so we return the polar
@@ -476,7 +479,10 @@ impl FibQuantAdapter {
             seed,
         )
         .map_err(|e| {
-            crate::error::ProveKvError::CompressionFailed(format!("fib profile build failed: {}", e))
+            crate::error::ProveKvError::CompressionFailed(format!(
+                "fib profile build failed: {}",
+                e
+            ))
         })?;
 
         // Override training parameters
@@ -504,17 +510,10 @@ impl FibQuantAdapter {
     ///
     /// Most useful when the caller has a full layer's worth of vectors
     /// to encode at once.
-    pub fn encode_batch_compact(
-        &self,
-        vectors: &[&[f32]],
-        seed: u64,
-    ) -> Result<Vec<u8>> {
+    pub fn encode_batch_compact(&self, vectors: &[&[f32]], seed: u64) -> Result<Vec<u8>> {
         let quantizer = self.build_quantizer(seed)?;
         let codes = quantizer.encode_batch(vectors).map_err(|e| {
-            crate::error::ProveKvError::CompressionFailed(format!(
-                "fib encode_batch failed: {}",
-                e
-            ))
+            crate::error::ProveKvError::CompressionFailed(format!("fib encode_batch failed: {}", e))
         })?;
         let profile = quantizer.profile().clone();
         fib_quant::FibCodeV1::encode_batch(&codes, &profile).map_err(|e| {
@@ -528,44 +527,39 @@ impl FibQuantAdapter {
     /// Batched decode using the FB2 wire format. Returns a Vec<f32> per
     /// input vector (in the same order). Falls back to per-block
     /// `from_compact_bytes` if the payload uses the older FB1 format.
-    pub fn decode_batch_compact(
-        &self,
-        payload: &[u8],
-        seed: u64,
-    ) -> Result<Vec<Vec<f32>>> {
+    pub fn decode_batch_compact(&self, payload: &[u8], seed: u64) -> Result<Vec<Vec<f32>>> {
         let quantizer = self.build_quantizer(seed)?;
         let profile = quantizer.profile().clone();
         // Detect format: FB2 = "FB2" magic, FB1 = "FB1" magic, else JSON.
-        let codes: Vec<fib_quant::FibCodeV1> = if payload.len() >= 3
-            && &payload[0..3] == fib_quant::BATCHED_MAGIC.as_slice()
-        {
-            fib_quant::FibCodeV1::decode_batch(payload, &profile).map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "fib batched wire decode failed: {}",
-                    e
-                ))
-            })?
-        } else if payload.len() >= 3 && payload[0..3] == fib_quant::COMPACT_MAGIC {
-            // Fallback to single-block FB1 decode (one block only).
-            let code = fib_quant::FibCodeV1::from_compact_bytes(payload, &profile).map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "fib compact decode failed: {}",
-                    e
-                ))
-            })?;
-            vec![code]
-        } else {
-            // Backward compat with JSON-encoded pools from older proveKV
-            // versions.
-            let code: fib_quant::FibCodeV1 =
-                serde_json::from_slice(payload).map_err(|e| {
+        let codes: Vec<fib_quant::FibCodeV1> =
+            if payload.len() >= 3 && &payload[0..3] == fib_quant::BATCHED_MAGIC.as_slice() {
+                fib_quant::FibCodeV1::decode_batch(payload, &profile).map_err(|e| {
+                    crate::error::ProveKvError::DecompressionFailed(format!(
+                        "fib batched wire decode failed: {}",
+                        e
+                    ))
+                })?
+            } else if payload.len() >= 3 && payload[0..3] == fib_quant::COMPACT_MAGIC {
+                // Fallback to single-block FB1 decode (one block only).
+                let code =
+                    fib_quant::FibCodeV1::from_compact_bytes(payload, &profile).map_err(|e| {
+                        crate::error::ProveKvError::DecompressionFailed(format!(
+                            "fib compact decode failed: {}",
+                            e
+                        ))
+                    })?;
+                vec![code]
+            } else {
+                // Backward compat with JSON-encoded pools from older proveKV
+                // versions.
+                let code: fib_quant::FibCodeV1 = serde_json::from_slice(payload).map_err(|e| {
                     crate::error::ProveKvError::DecompressionFailed(format!(
                         "fib code deserialize failed: {}",
                         e
                     ))
                 })?;
-            vec![code]
-        };
+                vec![code]
+            };
         quantizer.decode_batch_fast(&codes).map_err(|e| {
             crate::error::ProveKvError::DecompressionFailed(format!(
                 "fib decode_batch_fast failed: {}",
@@ -605,10 +599,7 @@ impl KVecCodec for FibQuantAdapter {
         // quantizer is byte-identical to one built per-vector.
         let quantizer = self.build_quantizer(seed)?;
         let codes = quantizer.encode_batch(vectors).map_err(|e| {
-            crate::error::ProveKvError::CompressionFailed(format!(
-                "fib encode_batch failed: {}",
-                e
-            ))
+            crate::error::ProveKvError::CompressionFailed(format!("fib encode_batch failed: {}", e))
         })?;
         let mut out = Vec::with_capacity(codes.len());
         for code in codes {
@@ -668,14 +659,12 @@ impl KVecCodec for FibQuantAdapter {
             };
             codes.push(code);
         }
-        quantizer
-            .decode_batch_fast(&codes)
-            .map_err(|e| {
-                crate::error::ProveKvError::DecompressionFailed(format!(
-                    "fib decode_batch_fast failed: {}",
-                    e
-                ))
-            })
+        quantizer.decode_batch_fast(&codes).map_err(|e| {
+            crate::error::ProveKvError::DecompressionFailed(format!(
+                "fib decode_batch_fast failed: {}",
+                e
+            ))
+        })
     }
 
     fn dim(&self) -> usize {
@@ -719,7 +708,9 @@ pub fn create_codec(
             #[cfg(feature = "fib")]
             {
                 let fc = fib_config.ok_or_else(|| {
-                    crate::error::ProveKvError::InvalidPolicy("fib codec requires fib_config".into())
+                    crate::error::ProveKvError::InvalidPolicy(
+                        "fib codec requires fib_config".into(),
+                    )
                 })?;
                 let adapter = FibQuantAdapter::new(
                     dim,

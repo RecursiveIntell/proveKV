@@ -29,11 +29,19 @@
   "phase1": {
     "lossy": true,
     "ppl": 6.1328125,
-    "compression_ratio": null,
+    "compression_ratio": 68.0383111111111,
     "roundtrip_seconds": 445.94463562965393,
     "forward_seconds": 1.520941972732544,
     "delta_ppl_pct": 0.0,
     "status": "complete",
-    "completed_at": "2026-06-03T22:00:39"
+    "completed_at": "2026-06-03T22:00:39",
+    "ratio_vs_f32_raw": 68.0383111111111,
+    "ratio_vs_fp16_kv": 34.01915555555555,
+    "raw_total_bytes": 2315255808,
+    "compressed_total_bytes": 34028688,
+    "pool_bytes": 14746512,
+    "shells_size_bytes": 19282176,
+    "oracle_ppl": 6.1328,
+    "roundtrip_ppl": 6.1328
   }
 }

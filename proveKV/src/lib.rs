@@ -17,8 +17,8 @@
 //! - **Agent shells (hot tier):** turbo-quant at b=4 (TQB1 batched wire
 //!   format), 32 projections. Measured 160 B/vec at the lossless
 //!   profile (f32 radii) and 72 B/vec at the lossy profile (BlockLogU8
-//!   radii). At the b=4 default, the system achieves 40.53x lossless
-//!   and 76.55x lossy PPL-validated system-level compression at N=8.
+//!   radii). At the b=4 default, the system achieves 36.00x lossless
+//!   and 68.04x lossy PPL-validated system-level compression at N=8.
 //!
 //! ## Quick Start
 //!

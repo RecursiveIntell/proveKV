@@ -3,12 +3,12 @@
 //! the wire-format-batching work — the difference IS the win.
 
 use provekv::codec::{create_codec, FibQuantAdapter};
-use provekv::KVecCodec;
 use provekv::policy::{
-    CODEC_FIB_K4_N32, CODEC_FIB_K4_N32_BATCHED, CODEC_TURBO_8BIT_BATCHED, FibConfig,
+    turbo_batched_codec_id, FibConfig, CODEC_FIB_K4_N32, CODEC_FIB_K4_N32_BATCHED,
 };
 use provekv::pool::SharedKVPool;
 use provekv::shape::{AttentionType, KvTensorShape};
+use provekv::KVecCodec;
 
 fn make_shape() -> KvTensorShape {
     KvTensorShape {
@@ -27,10 +27,7 @@ fn make_corpus(n_tokens: usize) -> Vec<(String, Vec<f32>)> {
     use rand_chacha::ChaCha8Rng;
     let mut rng = ChaCha8Rng::seed_from_u64(7);
     let shape = make_shape();
-    let vec_len = shape.num_layers as usize
-        * shape.num_kv_heads as usize
-        * shape.head_dim
-        * 2;
+    let vec_len = shape.num_layers as usize * shape.num_kv_heads as usize * shape.head_dim * 2;
     (0..n_tokens)
         .map(|i| {
             let v: Vec<f32> = (0..vec_len).map(|_| rng.gen_range(-1.0..1.0)).collect();
@@ -73,12 +70,21 @@ fn prove_kv_pool_batched_vs_legacy_size_ratio() {
         .layers
         .iter()
         .map(|l| {
-            l.key_blocks.iter().map(|b| b.compressed_bytes as u64).sum::<u64>()
-                + l.value_blocks.iter().map(|b| b.compressed_bytes as u64).sum::<u64>()
+            l.key_blocks
+                .iter()
+                .map(|b| b.compressed_bytes as u64)
+                .sum::<u64>()
+                + l.value_blocks
+                    .iter()
+                    .map(|b| b.compressed_bytes as u64)
+                    .sum::<u64>()
         })
         .sum();
     let batched_ratio = pool_batched.manifest.compression_ratio;
-    println!("Batched pool: {} bytes, manifest ratio {}", batched_bytes, batched_ratio);
+    println!(
+        "Batched pool: {} bytes, manifest ratio {}",
+        batched_bytes, batched_ratio
+    );
 
     // Now build the same pool the OLD way (per-vector, via the trait method
     // on the legacy codec id). We can't call SharedKVPool::build with the
@@ -148,7 +154,7 @@ fn prove_kv_shell_writes_batched_tqb1() {
         assert!(layer.is_batched(), "shell layer should be TQB1 batched");
         assert_eq!(layer.key_blocks.len(), 1);
         assert_eq!(layer.value_blocks.len(), 1);
-        assert_eq!(layer.key_blocks[0].codec, CODEC_TURBO_8BIT_BATCHED);
+        assert_eq!(layer.key_blocks[0].codec, turbo_batched_codec_id(4, false));
     }
 }
 
@@ -173,11 +179,10 @@ fn prove_kv_decodes_legacy_per_vector_pool() {
 fn prove_kv_lossless_turbo_is_unchanged_size() {
     use provekv::policy::CompressionPolicy;
     use provekv::pool::SharedKVPool;
-    use provekv::shape::{AttentionType, KvTensorShape};
-
     let shape = make_shape();
     let corpus = make_corpus(64);
     let policy = CompressionPolicy::default_two_tier(); // Lossless
+    assert_eq!(policy.shell_codec, turbo_batched_codec_id(4, false));
     let (pool, _) = SharedKVPool::build(&corpus, &shape, 99).unwrap();
 
     // Shells are lossless by default.
@@ -188,10 +193,7 @@ fn prove_kv_lossless_turbo_is_unchanged_size() {
     for layer in &shell.unique_layers {
         assert!(layer.is_batched());
         // The codec id should be the LOSSLESS batched variant.
-        assert_eq!(
-            layer.key_blocks[0].codec,
-            provekv::policy::CODEC_TURBO_8BIT_BATCHED
-        );
+        assert_eq!(layer.key_blocks[0].codec, turbo_batched_codec_id(4, false));
     }
 }
 
@@ -200,11 +202,9 @@ fn prove_kv_lossless_turbo_is_unchanged_size() {
 #[test]
 fn prove_kv_lossy_turbo_shell_is_smaller() {
     use provekv::policy::{
-        CompressionPolicy, RadiiCompression, TurboConfig, CODEC_TURBO_8BIT_BATCHED_LOSSY,
+        turbo_batched_codec_id, CompressionPolicy, RadiiCompression, TurboConfig,
     };
     use provekv::pool::SharedKVPool;
-    use provekv::shape::{AttentionType, KvTensorShape};
-
     let shape = make_shape();
     let corpus = make_corpus(64);
 
@@ -234,10 +234,11 @@ fn prove_kv_lossy_turbo_shell_is_smaller() {
     // Build the lossy pool (only shells differ; shared stays lossless).
     let mut lossy_policy = CompressionPolicy::default_two_tier();
     lossy_policy.turbo_config = TurboConfig {
-        bits: 8,
+        bits: 4,
         projections: 32,
         radii_compression: RadiiCompression::Lossy,
     };
+    lossy_policy.shell_codec = turbo_batched_codec_id(4, true);
     let (pool_lossy, _) =
         SharedKVPool::build_with_policy(&corpus, &shape, 99, lossy_policy).unwrap();
     let (shell_lossy, _) = pool_lossy
@@ -267,13 +268,10 @@ fn prove_kv_lossy_turbo_shell_is_smaller() {
 
     // Codec ids should be different.
     for layer in &shell_lossless.unique_layers {
-        assert_eq!(
-            layer.key_blocks[0].codec,
-            provekv::policy::CODEC_TURBO_8BIT_BATCHED
-        );
+        assert_eq!(layer.key_blocks[0].codec, turbo_batched_codec_id(4, false));
     }
     for layer in &shell_lossy.unique_layers {
-        assert_eq!(layer.key_blocks[0].codec, CODEC_TURBO_8BIT_BATCHED_LOSSY);
+        assert_eq!(layer.key_blocks[0].codec, turbo_batched_codec_id(4, true));
     }
 
     // Lossy must be smaller (predicted ~3.4x).

@@ -22,11 +22,9 @@
 //! The input.json is the same shape `build_prove_kv_corpus.py` produces:
 //!   { "shape": {...}, "tokens": [{"id": "...", "vector": [f32, ...]}, ...], "seed": 42 }
 
-use provekv::codec::FibQuantAdapter;
-use provekv::manifest::ShellManifest;
-use provekv::policy::{CompressionPolicy, FibConfig, RadiiCompression, TurboConfig};
+use provekv::policy::{turbo_batched_codec_id, CompressionPolicy, RadiiCompression, TurboConfig};
 use provekv::shape::{AttentionType, KvTensorShape};
-use provekv::{AgentShell, SharedKVPool};
+use provekv::SharedKVPool;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -110,22 +108,18 @@ fn main() {
     let mut policy = CompressionPolicy::default_two_tier();
     if lossy {
         policy.turbo_config = TurboConfig {
-            bits: 8,
+            bits: 4,
             projections: 32,
             radii_compression: RadiiCompression::Lossy,
         };
+        policy.shell_codec = turbo_batched_codec_id(4, true);
         eprintln!("[shell] lossy mode: TQB1-L (BlockLogU8 radii)");
     } else {
         eprintln!("[shell] lossless mode: TQB1 (f32 radii)");
     }
-    let fib_cfg: FibConfig = policy.fib_config.clone();
-
     // Build the corpus as (id, vector) pairs.
-    let corpus: Vec<(String, Vec<f32>)> = input
-        .tokens
-        .into_iter()
-        .map(|t| (t.id, t.vector))
-        .collect();
+    let corpus: Vec<(String, Vec<f32>)> =
+        input.tokens.into_iter().map(|t| (t.id, t.vector)).collect();
     let num_tokens = corpus.len();
     eprintln!(
         "[shell] building pool: num_tokens={} num_layers={} num_kv_heads={} head_dim={}",
@@ -133,14 +127,11 @@ fn main() {
     );
     let t_build = Instant::now();
     let (pool, pool_receipt) =
-        SharedKVPool::build_with_policy(&corpus, &shape, seed, policy.clone())
-            .expect("build pool");
+        SharedKVPool::build_with_policy(&corpus, &shape, seed, policy.clone()).expect("build pool");
     let build_ms = t_build.elapsed().as_millis() as u64;
     eprintln!(
         "[shell] pool build ok in {build_ms}ms: pool_id={} ratio={:.2}x size={} bytes",
-        pool.manifest.pool_id,
-        pool_receipt.compression_ratio,
-        pool_receipt.pool_size_bytes
+        pool.manifest.pool_id, pool_receipt.compression_ratio, pool_receipt.pool_size_bytes
     );
 
     // Materialize a shell that covers ALL tokens (1:1 with the pool).
@@ -186,17 +177,13 @@ fn main() {
             .write_all(&k_len.to_le_bytes())
             .expect("write k_len");
         for v in k_flat {
-            out_file
-                .write_all(&v.to_le_bytes())
-                .expect("write k data");
+            out_file.write_all(&v.to_le_bytes()).expect("write k data");
         }
         out_file
             .write_all(&v_len.to_le_bytes())
             .expect("write v_len");
         for v in v_flat {
-            out_file
-                .write_all(&v.to_le_bytes())
-                .expect("write v data");
+            out_file.write_all(&v.to_le_bytes()).expect("write v data");
         }
         total_bytes += 8 + (k_len as u64) * 4 + (v_len as u64) * 4;
         if layer_idx == 0 || layer_idx == layers.len() - 1 {
@@ -236,7 +223,6 @@ fn main() {
         lossy,
         output_bytes: total_bytes,
     };
-    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt).unwrap())
-        .expect("write receipt");
+    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt).unwrap()).expect("write receipt");
     eprintln!("[shell] receipt: {}", receipt_path.display());
 }

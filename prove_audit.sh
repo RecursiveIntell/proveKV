@@ -23,7 +23,7 @@ echo "=== F4: shell manifest must not lie about its codec ==="
 cargo test --release -p provekv --lib manifest::tests 2>&1 | tail -2
 
 echo ""
-echo "=== CLAIMS.json schema ==="
+echo "=== CLAIMS.json schema + public surface drift ==="
 python3 -c "
 import json, sys
 c = json.load(open('CLAIMS.json'))
@@ -44,6 +44,7 @@ for name, claim in c['claims'].items():
             raise AssertionError(f\"{name}: ratio_vs_fp16_kv {declared_fp16} != derived {derived_fp16:.4f}\")
 print(f'OK: {len(c[\"claims\"])} claims validated, all byte-derived ratios are consistent')
 "
+python3 scripts/validate_claim_surfaces.py
 
 echo ""
 echo "=== Cargo.lock is committed and resolves cleanly ==="

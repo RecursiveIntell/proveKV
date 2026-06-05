@@ -50,9 +50,7 @@ fn main() {
     let vecs_per_layer: usize = n_kv_heads * n_agents * n_unique;
     let total_vecs: usize = n_layers * vecs_per_layer;
 
-    eprintln!(
-        "[decode_wallclock] dim={dim} bits={bits} projections={projections} seed={seed}"
-    );
+    eprintln!("[decode_wallclock] dim={dim} bits={bits} projections={projections} seed={seed}");
     eprintln!(
         "[decode_wallclock] shape: layers={n_layers} kv_heads={n_kv_heads} agents={n_agents} unique={n_unique}"
     );
@@ -66,15 +64,14 @@ fn main() {
     // Build the quantizer and pre-encode a deterministic corpus of random
     // f32 vectors. The corpus doesn't need to match K/V stats — we're
     // measuring decode path overhead, not codec quality.
-    let quantizer = TurboQuantizer::new(dim, bits, projections, seed)
-        .expect("quantizer init");
+    let quantizer = TurboQuantizer::new(dim, bits, projections, seed).expect("quantizer init");
 
     // Pre-encode: build a corpus that matches the shape.
     eprintln!("[decode_wallclock] pre-encoding corpus...");
     let mut codes: Vec<TurboCode> = Vec::with_capacity(total_vecs);
     for i in 0..total_vecs {
         // Deterministic pseudo-random vector (so this is reproducible).
-        let mut v: Vec<f32> = (0..dim)
+        let v: Vec<f32> = (0..dim)
             .map(|d| {
                 let x = ((i * dim + d) as f32 * 0.1234).sin();
                 x * 0.1
@@ -92,7 +89,9 @@ fn main() {
     eprintln!();
 
     // ===== Per-vec decode path =====
-    eprintln!("[decode_wallclock] timing per-vec decode path (TurboQuantizer::decode_approximate)...");
+    eprintln!(
+        "[decode_wallclock] timing per-vec decode path (TurboQuantizer::decode_approximate)..."
+    );
     let per_vec_times: Vec<f64> = (0..n_reps)
         .map(|_| {
             let t0 = Instant::now();
@@ -117,7 +116,9 @@ fn main() {
 
     // ===== Batch decode path =====
     eprintln!();
-    eprintln!("[decode_wallclock] timing batch decode path (TurboQuantizer::decode_approximate_batch)...");
+    eprintln!(
+        "[decode_wallclock] timing batch decode path (TurboQuantizer::decode_approximate_batch)..."
+    );
     let batch_times: Vec<f64> = (0..n_reps)
         .map(|_| {
             let t0 = Instant::now();
