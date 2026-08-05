@@ -189,6 +189,17 @@
       "baseline_agreement": "3/3",
       "pages_verified": 48,
       "blocker_qwen35": "qwen3_5 architecture not in any transformers release"
+    },
+    "p0c_msi_gate": {
+      "claim": "P0-C MSI gate: Qwen2.5-0.5B on MSI (8-core, 31GB RAM, CPU-only). 5/5 baselines agree (token 34208), 48 KV pages from 24 layers, BLAKE3 roundtrip verified, DynamicCache reconstruction, suffix decode produces valid token.",
+      "claim_class": "test_gate",
+      "receipt": "results/bench/hybrid_state/qwen25/capture/20260805T042634Z/receipt.json",
+      "git_commit": "bcb7ebc",
+      "date": "2026-08-05",
+      "host": "msi",
+      "model": "Qwen/Qwen2.5-0.5B",
+      "baseline_agreement": "5/5",
+      "pages_verified": 48
     }
   }
 }
