@@ -1,0 +1,18 @@
+[project]
+name = "provekv-transformers"
+version = "0.1.0"
+description = "Pinned Qwen3.5 capture and replay adapter for proveKV hybrid state runtime"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.5.0",
+    "transformers @ git+https://github.com/huggingface/transformers.git",
+    "safetensors>=0.4.0",
+    "blake3>=0.4.0",
+    "accelerate>=1.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0", "pytest-xdist>=3.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
