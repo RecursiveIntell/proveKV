@@ -1,0 +1,66 @@
+{
+  "schema": "multi-agent-receipt-v1",
+  "generated": "2026-08-05T06:30:00Z",
+  "architecture": "3 coordinator agents fanning out to sub-agents via Agent Graph MCP",
+  "runs_included": [
+    {
+      "run_id": "run-19fd0962876-1",
+      "graph": "roi-advanced-v2 (9 nodes, adversarial cross-review council)",
+      "nodes": 9,
+      "llm_calls": 7,
+      "wall_clock_ms": 105934,
+      "provider": "deepseek-chat",
+      "all_succeeded": true,
+      "features_used": [
+        "collect_object joins (named key preservation)",
+        "multi-key template expansion ({attack} cross-node references)",
+        "regex router (attack-survivability pattern matching)",
+        "adversarial review loop (attacker → defender → router → review)"
+      ]
+    },
+    {
+      "run_id": "run-19fd0a0d250-1",
+      "graph": "ag-research-plan (9 nodes, 3-domain adversarial council)",
+      "nodes": 9,
+      "llm_calls": 7,
+      "wall_clock_ms": 111379,
+      "provider": "deepseek-chat",
+      "all_succeeded": true,
+      "features_used": [
+        "context_file auto-loading (AGENTS.md codebase context)",
+        "3-domain parallel analysis (control plane, evidence, authority)",
+        "adversarial gate (attack → defend → route)"
+      ]
+    },
+    {
+      "run_id": "run-19fd09f0b80-1",
+      "graph": "roi-simple (5 nodes, sequential council)",
+      "nodes": 5,
+      "llm_calls": 4,
+      "wall_clock_ms": 51965,
+      "provider": "deepseek-chat",
+      "all_succeeded": true
+    }
+  ],
+  "provekv_capture_replay": {
+    "model": "Qwen2.5-0.5B",
+    "cpu_verified": "5/5 baselines agree (token 34208), 48 pages BLAKE3 roundtrip",
+    "gpu_verified": "GTX 1070 CUDA 11.8 float16, 5/5 baselines agree",
+    "receipts": [
+      "results/bench/hybrid_state/qwen25/capture/20260805T042634Z/receipt.json",
+      "results/bench/hybrid_state/qwen25/capture-gpu/20260805T050409Z/receipt.json"
+    ]
+  },
+  "stack": {
+    "kv_cache_capture": "proveKV (Rust, 99 tests, BLAKE3 atomic persistence)",
+    "graph_orchestration": "agent-graph-mcp (Rust, 66 tests, 6 join modes, 7 router ops)",
+    "compression": "fib-quant (21x) + turbo-quant (68x) with +0.00% PPL delta",
+    "provider": "deepseek-chat via HTTPS API key auth",
+    "hardware": "MSI GTX 1070 8GB + laptop AMD iGPU"
+  },
+  "evidence_authority": "RecursiveIntell agent-graph-mcp receipt chain",
+  "git_commits": {
+    "provekv": "2fa83c1 (latest)",
+    "agent_graph_mcp": "5c68e0a (latest)"
+  }
+}
