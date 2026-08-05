@@ -1,6 +1,6 @@
 use provekv::{
-    AttentionType, ExecutionScope, HybridPageRef, HybridStateId, HybridStateManifestV1, KvTensorShape,
-    LeaseRight, LeaseRights, Principal, StateLease,
+    AttentionType, ExecutionScope, HybridPageRef, HybridStateId, HybridStateManifestV1,
+    KvTensorShape, LeaseRight, LeaseRights, Principal, StateLease,
 };
 
 fn manifest() -> HybridStateManifestV1 {
@@ -111,20 +111,10 @@ fn lease_expiry_and_revocation_are_authorization_denies() {
     )
     .unwrap();
 
-    let near_expiry = lease
-        .expires_unix_ms
-        .expect("finite expiry with ttl");
-    assert!(
-        lease
-            .authorize(
-                LeaseRight::Inspect,
-                near_expiry,
-                4,
-                id.as_str(),
-                &principal,
-            )
-            .is_err()
-    );
+    let near_expiry = lease.expires_unix_ms.expect("finite expiry with ttl");
+    assert!(lease
+        .authorize(LeaseRight::Inspect, near_expiry, 4, id.as_str(), &principal,)
+        .is_err());
 
     let past = near_expiry + 1;
     let fresh = StateLease::new(principal, scope, &id, LeaseRights::all(), None, 10, 0).unwrap();

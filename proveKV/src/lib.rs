@@ -42,20 +42,27 @@
 //! let (shell, mat_receipt) = pool.materialize_shell("agent_1", &[], 42).unwrap();
 //! ```
 
+pub mod branch;
 pub mod codec;
 pub mod error;
 pub mod fallback;
+pub mod gc;
 pub mod hybrid_manifest;
 pub mod lease;
 pub mod limits;
 pub mod manifest;
+pub mod page_format;
+pub mod page_store;
 pub mod policy;
 pub mod pool;
 pub mod principal;
 pub mod receipt;
+pub mod recovery;
 pub mod shape;
 pub mod shell;
 pub mod state_id;
+pub mod state_policy;
+pub mod state_store;
 
 // Re-export core types
 pub use codec::{create_codec, CompressedBlock, KVecCodec};
