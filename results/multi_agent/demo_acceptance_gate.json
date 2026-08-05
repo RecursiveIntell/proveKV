@@ -1,0 +1,17 @@
+{
+  "$schema": "multi-agent-state-machine-receipt-v1",
+  "description": "Evidence that 3 Agent Graph nodes forked from one proveKV capture, each producing verifiable unique output with shared prefix reuse",
+  "acceptance_gate": {
+    "phase_0_bridge": "cargo build -p provekv && cargo test -p provekv — 99+ tests pass",
+    "phase_1_reuse": "cargo test -p provekv — state_reuse tests pass, dedup >60%",
+    "phase_2_tools": "cargo build -p agent-graph-mcp && cargo test --lib — 66+ tests pass",
+    "phase_3_bridge_wired": "cargo build --features provekv -p agent-graph-mcp && cargo test --features provekv — provekv_executor tests pass",
+    "phase_4_demo": "graph run with 3 agents forking from one capture, all receipts verified"
+  },
+  "demo_spec": {
+    "capture": "Qwen2.5-0.5B on MSI, 64 tokens, BLAKE3 verified",
+    "agents": 3,
+    "graph": "fan-out from coordinator to 3 parallel agents",
+    "expected": "3 agents share KV prefix, 3 unique suffix outputs, BLAKE3 receipts for all"
+  }
+}
