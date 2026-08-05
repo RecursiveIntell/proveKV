@@ -668,7 +668,47 @@ rate. That is a paper-level claim, not one we've reproduced here.
     the script that regenerates every visual in this README from
     the receipts
 
-## License
+## Hybrid State Runtime (P0-B + P0-C)
+
+proveKV now includes a content-addressed hybrid state runtime for model KV-cache
+capture, persistence, and replay.
+
+### Capabilities (all Rust-tested, Python-verified on MSI)
+
+| Capability | Status | Evidence |
+|---|---|---|
+| Hybrid manifest identity (BLAKE3 content-addressing) | ✅ | `proveKV/src/hybrid_manifest.rs`, `state_id.rs` |
+| Binary page persistence (fsync/rename/dir-fsync) | ✅ | `proveKV/src/page_format.rs`, `page_store.rs` |
+| Crash recovery (temp cleanup, page validation) | ✅ | `proveKV/src/recovery.rs` |
+| Immutable state store (O(1) forks, no page copies) | ✅ | `proveKV/src/state_store.rs` |
+| Branch isolation (parent/sibling digests never mutate) | ✅ | `proveKV/src/branch.rs` |
+| Mark-and-sweep GC (reachability from live roots) | ✅ | `proveKV/src/gc.rs` |
+| Lease authority (CSPRNG IDs, per-right, expiry, revocation) | ✅ | `proveKV/src/lease.rs`, `principal.rs` |
+| Per-component codec admission policy | ✅ | `proveKV/src/state_policy.rs` |
+| Qwen2.5-0.5B CPU capture → persist → reopen → replay | ✅ | `results/bench/hybrid_state/qwen25/` |
+| MSI-verified: 5/5 baselines agree, 48 pages roundtrip | ✅ | CLAIMS.json `p0c_msi_gate` |
+| Qwen3.5-2B support | ❌ | Blocked: `qwen3_5` not in transformers |
+
+### Quick start
+
+```bash
+# Capture KV cache from Qwen2.5-0.5B
+cd python && uv sync && cd ..
+PATH="python/.venv/bin:$PATH" PYTHONPATH="python" \
+  python3 proveKV/scripts/qwen35_state_capture.py \
+  --tokens 64 --output results/bench/hybrid_state/qwen25/capture
+
+# Verify replay
+PATH="python/.venv/bin:$PATH" PYTHONPATH="python" \
+  python3 proveKV/scripts/qwen35_replay_gate.py \
+  --capture-dir results/bench/hybrid_state/qwen25/capture/<run-id> \
+  --baselines 5
+```
+
+See [`docs/HYBRID_STATE_RUNBOOK.md`](docs/HYBRID_STATE_RUNBOOK.md) for the full
+capture, replay, fork, and GC runbook.
+
+## License a content-addressed hybrid state runtime for model KV-cache\ncapture, persistence, and replay.\n\n### Capabilities (all Rust-tested, Python-verified on MSI)\n\n| Capability | Status | Evidence |\n|---|---|---|\n| Hybrid manifest identity (BLAKE3 content-addressing) | ✅ | `proveKV/src/hybrid_manifest.rs`, `state_id.rs` |\n| Binary page persistence (fsync/rename/dir-fsync) | ✅ | `proveKV/src/page_format.rs`, `page_store.rs` |\n| Crash recovery (temp cleanup, page validation) | ✅ | `proveKV/src/recovery.rs` |\n| Immutable state store (O(1) forks, no page copies) | ✅ | `proveKV/src/state_store.rs` |\n| Branch isolation (parent/sibling digests never mutate) | ✅ | `proveKV/src/branch.rs` |\n| Mark-and-sweep GC (reachability from live roots) | ✅ | `proveKV/src/gc.rs` |\n| Lease authority (CSPRNG IDs, per-right, expiry, revocation) | ✅ | `proveKV/src/lease.rs`, `principal.rs` |\n| Per-component codec admission policy | ✅ | `proveKV/src/state_policy.rs` |\n| Qwen2.5-0.5B CPU capture → persist → reopen → replay | ✅ | `results/bench/hybrid_state/qwen25/` |\n| MSI-verified: 5/5 baselines agree, 48 pages roundtrip | ✅ | CLAIMS.json `p0c_msi_gate` |\n| Qwen3.5-2B support | ❌ | Blocked: `qwen3_5` not in transformers |\n\n### Quick start\n\n```bash\n# Capture KV cache from Qwen2.5-0.5B\ncd python && uv sync && cd ..\nPATH=\"python/.venv/bin:$PATH\" PYTHONPATH=\"python\" \\\n  python3 proveKV/scripts/qwen35_state_capture.py \\\n  --tokens 64 --output results/bench/hybrid_state/qwen25/capture\n\n# Verify replay\nPATH=\"python/.venv/bin:$PATH\" PYTHONPATH=\"python\" \\\n  python3 proveKV/scripts/qwen35_replay_gate.py \\\n  --capture-dir results/bench/hybrid_state/qwen25/capture/<run-id> \\\n  --baselines 5\n```\n\nSee [`docs/HYBRID_STATE_RUNBOOK.md`](docs/HYBRID_STATE_RUNBOOK.md) for the full\ncapture, replay, fork, and GC runbook.\n\n## License
 
 This standalone proof repo is MIT-licensed. Sub-crates retain
 their upstream licenses (Apache-2.0 for fib-quant, MIT for
