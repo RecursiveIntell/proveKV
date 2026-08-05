@@ -170,5 +170,25 @@
       "claim_ratio_lossless": 36.00355555555555,
       "claim_ratio_lossy": 68.0383111111111
     }
+  },
+  "hybrid_state": {
+    "p0b_rust_gate": {
+      "claim": "P0-B Rust gate: all 99 provekv tests pass with zero failures. Hybrid manifest identity, binary page persistence with BLAKE3 digests, atomic fsync/rename/dir-fsync writes, O(1)-metadata forks, mark-and-sweep GC, and per-component codec policy.",
+      "claim_class": "test_gate",
+      "receipt": "cargo test -p provekv",
+      "git_commit": "3b38381",
+      "date": "2026-08-05"
+    },
+    "p0c_capture_replay_gate": {
+      "claim": "P0-C capture/replay gate: Qwen2.5-0.5B, 3/3 baselines agree, 48 KV pages, BLAKE3 roundtrip verified, DynamicCache reconstruction, suffix replay produces valid token. Qwen3.5-2B blocked pending transformers architecture support.",
+      "claim_class": "test_gate",
+      "receipt": "/tmp/provekv-capture-test/20260805T041422Z/receipt.json",
+      "git_commit": "6e8f595",
+      "date": "2026-08-05",
+      "model": "Qwen/Qwen2.5-0.5B",
+      "baseline_agreement": "3/3",
+      "pages_verified": 48,
+      "blocker_qwen35": "qwen3_5 architecture not in any transformers release"
+    }
   }
 }
