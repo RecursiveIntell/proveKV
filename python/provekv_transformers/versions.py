@@ -40,9 +40,12 @@ def check_environment() -> dict:
         try:
             ver = importlib.metadata.version(name)
             report["packages"][name] = ver
-            if not ver.startswith(min_version):
+            # Accept any version >= min_version (major.minor prefix match)
+            ver_parts = ver.split(".")
+            min_parts = min_version.split(".")
+            if ver_parts[:len(min_parts)] < min_parts:
                 report["mismatches"].append(
-                    f"{name}=={ver} (expected ~={min_version})"
+                    f"{name}=={ver} (expected >={min_version})"
                 )
         except importlib.metadata.PackageNotFoundError:
             report["mismatches"].append(f"{name} not installed")
