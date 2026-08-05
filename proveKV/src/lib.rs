@@ -43,6 +43,8 @@
 //! ```
 
 pub mod branch;
+#[cfg(feature = "bridge")]
+pub mod bridge;
 pub mod codec;
 pub mod error;
 pub mod fallback;
@@ -62,6 +64,7 @@ pub mod shape;
 pub mod shell;
 pub mod state_id;
 pub mod state_policy;
+pub mod state_reuse;
 pub mod state_store;
 
 // Re-export core types
