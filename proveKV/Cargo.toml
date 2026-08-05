@@ -48,6 +48,8 @@ parallel_pool = ["fib-quant?/parallel"]
 parallel_shell = []
 # Declared for gpu-bench cfg probes; GPU dispatch currently lives in gpu-backend.
 gpu = []
+# Serializable state capture types for agent-graph and other bridge consumers.
+bridge = []
 
 [dev-dependencies]
 proptest = "1"
