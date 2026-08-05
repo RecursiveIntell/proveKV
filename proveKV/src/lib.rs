@@ -54,6 +54,8 @@ pub mod hybrid_manifest;
 pub mod lease;
 pub mod limits;
 pub mod manifest;
+#[cfg(feature = "mcp-server")]
+pub mod mcp_server;
 pub mod page_format;
 pub mod page_store;
 pub mod policy;
@@ -67,6 +69,12 @@ pub mod state_id;
 pub mod state_policy;
 pub mod state_reuse;
 pub mod state_store;
+pub mod transport;
+
+pub use transport::PageTransfer;
+pub mod stream;
+
+pub use stream::{Delivery, Snapshot, StreamProcessor};
 
 // Re-export core types
 pub use codec::{create_codec, CompressedBlock, KVecCodec};

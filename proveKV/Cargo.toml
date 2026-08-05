@@ -29,10 +29,15 @@ blake3 = "1"
 rand = "0.8"
 rand_chacha = "0.3"
 thiserror = "2"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+futures-util = "0.3"
+urlencoding = "2"
 
 fib-quant = { workspace = true, optional = true }
 turbo-quant = { workspace = true, optional = true }
 rayon = "1.10"
+axum = { version = "0.8", optional = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"], optional = true }
 
 [features]
 # Default: fib cold tier + turbo hot tier. Both tiers compiled. The compact
@@ -50,6 +55,12 @@ parallel_shell = []
 gpu = []
 # Serializable state capture types for agent-graph and other bridge consumers.
 bridge = []
+mcp-server = ["dep:axum", "dep:tokio"]
+
+[[bin]]
+name = "provenkv-mcp"
+path = "src/bin/provenkv-mcp.rs"
+required-features = ["mcp-server"]
 
 [dev-dependencies]
 proptest = "1"
