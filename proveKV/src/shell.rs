@@ -1,8 +1,10 @@
 use std::time::Instant;
 
+use serde::{Deserialize, Serialize};
+
 use crate::codec::{CompressedBlock, TurboQuantAdapter};
 use crate::error::{ProveKvError, Result};
-use crate::manifest::ShellManifest;
+use crate::manifest::{ShellComponentKind, ShellManifest};
 use crate::policy::{is_batched_turbo, is_batched_turbo_lossy, turbo_batched_codec_id};
 use crate::pool::SharedKVPool;
 use crate::receipt::{now_unix, ShellMaterializeReceipt};
@@ -15,7 +17,7 @@ use crate::receipt::{now_unix, ShellMaterializeReceipt};
 /// `key_codec` and `value_codec` of the blocks are the source of truth —
 /// batched blocks carry `turbo_8bit_batched`, legacy blocks carry
 /// `turbo_8bit`. Decoding dispatches per block.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShellLayer {
     /// Zero-based layer index.
     pub layer_index: u32,
@@ -25,6 +27,9 @@ pub struct ShellLayer {
     pub value_blocks: Vec<CompressedBlock>,
     /// Blake3 digest of all blocks in this layer.
     pub block_digest: String,
+    /// Component metadata for this layer. `None` preserves legacy K/V shells.
+    #[serde(default)]
+    pub component_kind: Option<ShellComponentKind>,
 }
 
 impl ShellLayer {
@@ -285,6 +290,7 @@ pub fn materialize_shell(
             key_blocks,
             value_blocks,
             block_digest: String::new(),
+            component_kind: Some(ShellComponentKind::KeyValue),
         };
         layer.block_digest = layer.compute_digest()?;
         Ok((layer, layer_bytes))
@@ -330,7 +336,7 @@ pub fn materialize_shell(
     .to_hex()
     .to_string();
 
-    let shell_manifest = ShellManifest::new(
+    let mut shell_manifest = ShellManifest::new(
         agent_id.to_string(),
         pool.manifest.pool_id.clone(),
         num_unique_tokens,
@@ -343,6 +349,10 @@ pub fn materialize_shell(
         pool.manifest.shape.num_kv_heads,
         pool.manifest.policy.turbo_config.clone(),
     )?;
+    shell_manifest.component_kinds = unique_layers
+        .iter()
+        .map(|layer| layer.component_kind.clone().unwrap_or_default())
+        .collect();
 
     let receipt = ShellMaterializeReceipt::new(
         agent_id.to_string(),
@@ -395,6 +405,25 @@ mod tests {
                 (format!("token_{}", i), vec)
             })
             .collect()
+    }
+
+    #[test]
+    fn test_mixed_component_metadata_roundtrip() {
+        let layer = ShellLayer {
+            layer_index: 3,
+            key_blocks: Vec::new(),
+            value_blocks: Vec::new(),
+            block_digest: "digest".into(),
+            component_kind: Some(ShellComponentKind::RuntimeSpecific("qwen3.5".into())),
+        };
+        let json = serde_json::to_string(&layer).unwrap();
+        let decoded: ShellLayer = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.component_kind, layer.component_kind);
+
+        let legacy =
+            r#"{"layer_index":0,"key_blocks":[],"value_blocks":[],"block_digest":"legacy"}"#;
+        let decoded: ShellLayer = serde_json::from_str(legacy).unwrap();
+        assert_eq!(decoded.component_kind, None);
     }
 
     #[test]

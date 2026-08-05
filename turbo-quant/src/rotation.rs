@@ -320,8 +320,8 @@ impl StoredRotation {
                 });
             }
             let mut out = vec![0.0f32; dim];
-            for i in 0..dim {
-                out[i] = self
+            for (i, output) in out.iter_mut().enumerate().take(dim) {
+                *output = self
                     .matrix
                     .column(i)
                     .iter()

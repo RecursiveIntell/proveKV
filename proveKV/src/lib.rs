@@ -45,22 +45,35 @@
 pub mod codec;
 pub mod error;
 pub mod fallback;
+pub mod hybrid_manifest;
+pub mod lease;
+pub mod limits;
 pub mod manifest;
 pub mod policy;
 pub mod pool;
+pub mod principal;
 pub mod receipt;
 pub mod shape;
 pub mod shell;
+pub mod state_id;
 
 // Re-export core types
 pub use codec::{create_codec, CompressedBlock, KVecCodec};
 pub use error::{ProveKvError, Result};
-pub use manifest::{PoolManifest, ShellManifest, POOL_MANIFEST_SCHEMA, SHELL_MANIFEST_SCHEMA};
+pub use hybrid_manifest::{
+    HybridComponent, HybridPageRef, HybridStateManifestV1, HYBRID_MANIFEST_SCHEMA,
+};
+pub use lease::{LeaseRight, LeaseRights, LeaseStatus, StateLease};
+pub use limits::ResourceLimits;
+pub use manifest::{
+    PoolManifest, ShellComponentKind, ShellManifest, POOL_MANIFEST_SCHEMA, SHELL_MANIFEST_SCHEMA,
+};
 pub use policy::{
     CodecId, CompressionPolicy, FibConfig, TurboConfig, CODEC_EXACT_FALLBACK, CODEC_FIB_K4_N32,
     CODEC_TURBO_8BIT,
 };
 pub use pool::{CacheTarget, DecompressedLayer, PoolLayer, SharedKVPool};
+pub use principal::{ExecutionScope, Principal};
 pub use receipt::{
     BlockInjectionTrace, InjectionReceipt, PoolBuildReceipt, ShellMaterializeReceipt,
     INJECTION_RECEIPT_SCHEMA, POOL_BUILD_RECEIPT_SCHEMA, RECEIPT_SCHEMA,
@@ -68,3 +81,4 @@ pub use receipt::{
 };
 pub use shape::{AttentionType, KvTensorShape};
 pub use shell::{AgentShell, ShellLayer};
+pub use state_id::HybridStateId;

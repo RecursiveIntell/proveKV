@@ -69,6 +69,7 @@ pub mod profile;
 pub mod qjl;
 pub mod radius;
 pub mod rotation;
+pub mod sparse_prefill;
 pub mod turbo;
 pub mod wire;
 
@@ -89,5 +90,12 @@ pub use profile::{CodecProfileV1, CompressionPolicyV1, CompressionReceiptV1, Val
 pub use qjl::{QjlProjectedQuery, QjlQuantizer, QjlSketch, QjlSketchProvenanceV1};
 pub use radius::{CompressedRadiiV1, RadiusCodecProfileV1};
 pub use rotation::{FastHadamardRotation, Rotation, RotationBackend, RotationKind, StoredRotation};
+pub use sparse_prefill::{
+    benchmark_sparse_prefill_traces, build_sparse_prefill_plan, compare_cache_sparse_prefill,
+    compare_cache_sparse_prefill_with_options, compare_sparse_prefill, KvSparsePrefillComparisonV1,
+    KvSparsePrefillPlanV1, SparseBlockRange, SparsePrefillConfig, SparsePrefillGateConfig,
+    SparsePrefillPattern, SparsePrefillPatternSummaryV1, SparsePrefillTraceBenchmarkV1,
+    SparsePrefillTraceV1,
+};
 pub use turbo::{BatchStats, TurboCode, TurboMode, TurboProjectedQuery, TurboQuantizer};
 pub use wire::{TurboCodeWireHeader, TurboCodeWireV1, TURBO_CODE_WIRE_MAGIC};

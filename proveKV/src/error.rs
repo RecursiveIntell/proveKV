@@ -42,6 +42,15 @@ pub enum ProveKvError {
     #[error("internal error: {0}")]
     Internal(String),
 
+    #[error("principal validation failed: {0}")]
+    InvalidPrincipal(String),
+
+    #[error("lease validation failed: {0}")]
+    InvalidLease(String),
+
+    #[error("resource limit exceeded: {0}")]
+    ResourceLimitExceeded(String),
+
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 

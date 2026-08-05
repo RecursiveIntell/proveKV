@@ -8,6 +8,20 @@ pub const POOL_MANIFEST_SCHEMA: &str = "pool_manifest_v1";
 /// Schema version for ShellManifest.
 pub const SHELL_MANIFEST_SCHEMA: &str = "shell_manifest_v1";
 
+/// Component carried by a shell layer.
+/// `RuntimeSpecific` is descriptive only until a runtime integration is added.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ShellComponentKind {
+    KeyValue,
+    RuntimeSpecific(String),
+}
+
+impl Default for ShellComponentKind {
+    fn default() -> Self {
+        Self::KeyValue
+    }
+}
+
 /// Manifest describing a built SharedKVPool.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PoolManifest {
@@ -129,6 +143,9 @@ pub struct ShellManifest {
     pub num_kv_heads: u32,
     /// TurboQuant configuration used for this shell.
     pub turbo_config: TurboConfig,
+    /// Optional per-layer component metadata. Empty means legacy K/V shell.
+    #[serde(default)]
+    pub component_kinds: Vec<ShellComponentKind>,
 }
 
 impl ShellManifest {
@@ -191,6 +208,7 @@ impl ShellManifest {
             head_dim,
             num_kv_heads,
             turbo_config,
+            component_kinds: Vec::new(),
         };
         manifest.validate()?;
         Ok(manifest)

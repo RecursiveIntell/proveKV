@@ -1,0 +1,557 @@
+{
+  "best_kernel_candidates": [],
+  "receipts": [
+    {
+      "config": {
+        "adaptive_include_top_k": true,
+        "adaptive_min_score_reads_saved_ratio": 0.5,
+        "adaptive_target_mass": 0.9950000047683716,
+        "anchor_count": 4,
+        "block_size": 16,
+        "max_blocks": 3,
+        "max_tokens": 32,
+        "recent_window": 16,
+        "top_k": 8,
+        "vertical_stride": 12
+      },
+      "gate": {
+        "min_score_reads_saved_ratio": 0.5,
+        "min_softmax_mass_coverage": 0.9950000047683716,
+        "min_top_k_recall": 0.75
+      },
+      "patterns": [
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7791457772254944,
+          "mean_softmax_mass_coverage": 0.23323212563991547,
+          "mean_top_k_recall": 0.470703125,
+          "min_score_reads_saved_ratio": 0.692307710647583,
+          "min_softmax_mass_coverage": 0.009897371754050255,
+          "min_top_k_recall": 0.0,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "a_shape",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7484211921691895,
+          "mean_softmax_mass_coverage": 0.2503780722618103,
+          "mean_top_k_recall": 0.482421875,
+          "min_score_reads_saved_ratio": 0.6769230365753174,
+          "min_softmax_mass_coverage": 0.009731723926961422,
+          "min_top_k_recall": 0.0,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "vertical_slash",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.646633505821228,
+          "mean_softmax_mass_coverage": 0.8067753911018372,
+          "mean_top_k_recall": 0.724609375,
+          "min_score_reads_saved_ratio": 0.5076923370361328,
+          "min_softmax_mass_coverage": 0.32936912775039673,
+          "min_top_k_recall": 0.375,
+          "pass_count": 8,
+          "pass_rate": 0.125,
+          "pattern": "block_sparse",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.646633505821228,
+          "mean_softmax_mass_coverage": 0.8491638898849487,
+          "mean_top_k_recall": 0.90234375,
+          "min_score_reads_saved_ratio": 0.5076923370361328,
+          "min_softmax_mass_coverage": 0.3749368190765381,
+          "min_top_k_recall": 0.5,
+          "pass_count": 25,
+          "pass_rate": 0.390625,
+          "pattern": "hybrid_anchor_recent_blocks",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7539455890655518,
+          "mean_softmax_mass_coverage": 0.884486198425293,
+          "mean_top_k_recall": 1.0,
+          "min_score_reads_saved_ratio": 0.5076923370361328,
+          "min_softmax_mass_coverage": 0.4071817100048065,
+          "min_top_k_recall": 1.0,
+          "pass_count": 37,
+          "pass_rate": 0.578125,
+          "pattern": "adaptive_mass",
+          "trace_count": 64
+        }
+      ],
+      "schema": "SparsePrefillTraceBenchmarkV1",
+      "trace_count": 64,
+      "warnings": [
+        "no sparse prefill pattern passed the configured kernel gate"
+      ]
+    },
+    {
+      "config": {
+        "adaptive_include_top_k": true,
+        "adaptive_min_score_reads_saved_ratio": 0.5,
+        "adaptive_target_mass": 0.9950000047683716,
+        "anchor_count": 4,
+        "block_size": 16,
+        "max_blocks": 4,
+        "max_tokens": 48,
+        "recent_window": 16,
+        "top_k": 8,
+        "vertical_stride": 12
+      },
+      "gate": {
+        "min_score_reads_saved_ratio": 0.5,
+        "min_softmax_mass_coverage": 0.9950000047683716,
+        "min_top_k_recall": 0.75
+      },
+      "patterns": [
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7791457772254944,
+          "mean_softmax_mass_coverage": 0.23323212563991547,
+          "mean_top_k_recall": 0.470703125,
+          "min_score_reads_saved_ratio": 0.692307710647583,
+          "min_softmax_mass_coverage": 0.009897371754050255,
+          "min_top_k_recall": 0.0,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "a_shape",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7484211921691895,
+          "mean_softmax_mass_coverage": 0.2503780722618103,
+          "mean_top_k_recall": 0.482421875,
+          "min_score_reads_saved_ratio": 0.6769230365753174,
+          "min_softmax_mass_coverage": 0.009731723926961422,
+          "min_top_k_recall": 0.0,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "vertical_slash",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.46994999051094055,
+          "mean_softmax_mass_coverage": 0.88386070728302,
+          "mean_top_k_recall": 0.85546875,
+          "min_score_reads_saved_ratio": 0.26153844594955444,
+          "min_softmax_mass_coverage": 0.4691430628299713,
+          "min_top_k_recall": 0.5,
+          "pass_count": 10,
+          "pass_rate": 0.15625,
+          "pattern": "block_sparse",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.46994999051094055,
+          "mean_softmax_mass_coverage": 0.9123697876930237,
+          "mean_top_k_recall": 0.94921875,
+          "min_score_reads_saved_ratio": 0.26153844594955444,
+          "min_softmax_mass_coverage": 0.5240760445594788,
+          "min_top_k_recall": 0.625,
+          "pass_count": 16,
+          "pass_rate": 0.25,
+          "pattern": "hybrid_anchor_recent_blocks",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7137271761894226,
+          "mean_softmax_mass_coverage": 0.9129331707954407,
+          "mean_top_k_recall": 1.0,
+          "min_score_reads_saved_ratio": 0.5,
+          "min_softmax_mass_coverage": 0.5735898017883301,
+          "min_top_k_recall": 1.0,
+          "pass_count": 40,
+          "pass_rate": 0.625,
+          "pattern": "adaptive_mass",
+          "trace_count": 64
+        }
+      ],
+      "schema": "SparsePrefillTraceBenchmarkV1",
+      "trace_count": 64,
+      "warnings": [
+        "no sparse prefill pattern passed the configured kernel gate"
+      ]
+    },
+    {
+      "config": {
+        "adaptive_include_top_k": true,
+        "adaptive_min_score_reads_saved_ratio": 0.5,
+        "adaptive_target_mass": 0.9950000047683716,
+        "anchor_count": 4,
+        "block_size": 16,
+        "max_blocks": 4,
+        "max_tokens": 48,
+        "recent_window": 24,
+        "top_k": 8,
+        "vertical_stride": 12
+      },
+      "gate": {
+        "min_score_reads_saved_ratio": 0.5,
+        "min_softmax_mass_coverage": 0.9950000047683716,
+        "min_top_k_recall": 0.75
+      },
+      "patterns": [
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.6908044219017029,
+          "mean_softmax_mass_coverage": 0.2673400938510895,
+          "mean_top_k_recall": 0.515625,
+          "min_score_reads_saved_ratio": 0.5692307949066162,
+          "min_softmax_mass_coverage": 0.03047957830131054,
+          "min_top_k_recall": 0.125,
+          "pass_count": 1,
+          "pass_rate": 0.015625,
+          "pattern": "a_shape",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.6682153940200806,
+          "mean_softmax_mass_coverage": 0.282012403011322,
+          "mean_top_k_recall": 0.525390625,
+          "min_score_reads_saved_ratio": 0.5692307949066162,
+          "min_softmax_mass_coverage": 0.030310355126857758,
+          "min_top_k_recall": 0.125,
+          "pass_count": 1,
+          "pass_rate": 0.015625,
+          "pattern": "vertical_slash",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.46994999051094055,
+          "mean_softmax_mass_coverage": 0.88386070728302,
+          "mean_top_k_recall": 0.85546875,
+          "min_score_reads_saved_ratio": 0.26153844594955444,
+          "min_softmax_mass_coverage": 0.4691430628299713,
+          "min_top_k_recall": 0.5,
+          "pass_count": 10,
+          "pass_rate": 0.15625,
+          "pattern": "block_sparse",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.46994999051094055,
+          "mean_softmax_mass_coverage": 0.9192281365394592,
+          "mean_top_k_recall": 0.966796875,
+          "min_score_reads_saved_ratio": 0.26153844594955444,
+          "min_softmax_mass_coverage": 0.5237804651260376,
+          "min_top_k_recall": 0.625,
+          "pass_count": 16,
+          "pass_rate": 0.25,
+          "pattern": "hybrid_anchor_recent_blocks",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7137271761894226,
+          "mean_softmax_mass_coverage": 0.9129331707954407,
+          "mean_top_k_recall": 1.0,
+          "min_score_reads_saved_ratio": 0.5,
+          "min_softmax_mass_coverage": 0.5735898017883301,
+          "min_top_k_recall": 1.0,
+          "pass_count": 40,
+          "pass_rate": 0.625,
+          "pattern": "adaptive_mass",
+          "trace_count": 64
+        }
+      ],
+      "schema": "SparsePrefillTraceBenchmarkV1",
+      "trace_count": 64,
+      "warnings": [
+        "no sparse prefill pattern passed the configured kernel gate"
+      ]
+    },
+    {
+      "config": {
+        "adaptive_include_top_k": true,
+        "adaptive_min_score_reads_saved_ratio": 0.5,
+        "adaptive_target_mass": 0.9950000047683716,
+        "anchor_count": 4,
+        "block_size": 8,
+        "max_blocks": 5,
+        "max_tokens": 48,
+        "recent_window": 16,
+        "top_k": 8,
+        "vertical_stride": 12
+      },
+      "gate": {
+        "min_score_reads_saved_ratio": 0.5,
+        "min_softmax_mass_coverage": 0.9950000047683716,
+        "min_top_k_recall": 0.75
+      },
+      "patterns": [
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7791457772254944,
+          "mean_softmax_mass_coverage": 0.23323212563991547,
+          "mean_top_k_recall": 0.470703125,
+          "min_score_reads_saved_ratio": 0.692307710647583,
+          "min_softmax_mass_coverage": 0.009897371754050255,
+          "min_top_k_recall": 0.0,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "a_shape",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7484211921691895,
+          "mean_softmax_mass_coverage": 0.2503780722618103,
+          "mean_top_k_recall": 0.482421875,
+          "min_score_reads_saved_ratio": 0.6769230365753174,
+          "min_softmax_mass_coverage": 0.009731723926961422,
+          "min_top_k_recall": 0.0,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "vertical_slash",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.5760392546653748,
+          "mean_softmax_mass_coverage": 0.8507863283157349,
+          "mean_top_k_recall": 0.87109375,
+          "min_score_reads_saved_ratio": 0.38461536169052124,
+          "min_softmax_mass_coverage": 0.34804055094718933,
+          "min_top_k_recall": 0.5,
+          "pass_count": 13,
+          "pass_rate": 0.203125,
+          "pattern": "block_sparse",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.46994999051094055,
+          "mean_softmax_mass_coverage": 0.9026166200637817,
+          "mean_top_k_recall": 0.951171875,
+          "min_score_reads_saved_ratio": 0.26153844594955444,
+          "min_softmax_mass_coverage": 0.47943922877311707,
+          "min_top_k_recall": 0.625,
+          "pass_count": 18,
+          "pass_rate": 0.28125,
+          "pattern": "hybrid_anchor_recent_blocks",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.7137271761894226,
+          "mean_softmax_mass_coverage": 0.9129331707954407,
+          "mean_top_k_recall": 1.0,
+          "min_score_reads_saved_ratio": 0.5,
+          "min_softmax_mass_coverage": 0.5735898017883301,
+          "min_top_k_recall": 1.0,
+          "pass_count": 40,
+          "pass_rate": 0.625,
+          "pattern": "adaptive_mass",
+          "trace_count": 64
+        }
+      ],
+      "schema": "SparsePrefillTraceBenchmarkV1",
+      "trace_count": 64,
+      "warnings": [
+        "no sparse prefill pattern passed the configured kernel gate"
+      ]
+    },
+    {
+      "config": {
+        "adaptive_include_top_k": true,
+        "adaptive_min_score_reads_saved_ratio": 0.5,
+        "adaptive_target_mass": 0.9950000047683716,
+        "anchor_count": 4,
+        "block_size": 16,
+        "max_blocks": 4,
+        "max_tokens": 64,
+        "recent_window": 32,
+        "top_k": 8,
+        "vertical_stride": 16
+      },
+      "gate": {
+        "min_score_reads_saved_ratio": 0.5,
+        "min_softmax_mass_coverage": 0.9950000047683716,
+        "min_top_k_recall": 0.75
+      },
+      "patterns": [
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.602462649345398,
+          "mean_softmax_mass_coverage": 0.3230368196964264,
+          "mean_top_k_recall": 0.626953125,
+          "min_score_reads_saved_ratio": 0.44615381956100464,
+          "min_softmax_mass_coverage": 0.039518795907497406,
+          "min_top_k_recall": 0.125,
+          "pass_count": 1,
+          "pass_rate": 0.015625,
+          "pattern": "a_shape",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.6000661253929138,
+          "mean_softmax_mass_coverage": 0.32497283816337585,
+          "mean_top_k_recall": 0.630859375,
+          "min_score_reads_saved_ratio": 0.4615384340286255,
+          "min_softmax_mass_coverage": 0.039372336119413376,
+          "min_top_k_recall": 0.125,
+          "pass_count": 1,
+          "pass_rate": 0.015625,
+          "pattern": "vertical_slash",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.3327755331993103,
+          "mean_softmax_mass_coverage": 0.902476966381073,
+          "mean_top_k_recall": 0.85546875,
+          "min_score_reads_saved_ratio": 0.01538461446762085,
+          "min_softmax_mass_coverage": 0.5199685096740723,
+          "min_top_k_recall": 0.5,
+          "pass_count": 5,
+          "pass_rate": 0.078125,
+          "pattern": "block_sparse",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.2932668626308441,
+          "mean_softmax_mass_coverage": 0.9569220542907715,
+          "mean_top_k_recall": 0.986328125,
+          "min_score_reads_saved_ratio": 0.01538461446762085,
+          "min_softmax_mass_coverage": 0.6687940955162048,
+          "min_top_k_recall": 0.75,
+          "pass_count": 9,
+          "pass_rate": 0.140625,
+          "pattern": "hybrid_anchor_recent_blocks",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.697993814945221,
+          "mean_softmax_mass_coverage": 0.9234492182731628,
+          "mean_top_k_recall": 1.0,
+          "min_score_reads_saved_ratio": 0.5,
+          "min_softmax_mass_coverage": 0.6225486397743225,
+          "min_top_k_recall": 1.0,
+          "pass_count": 42,
+          "pass_rate": 0.65625,
+          "pattern": "adaptive_mass",
+          "trace_count": 64
+        }
+      ],
+      "schema": "SparsePrefillTraceBenchmarkV1",
+      "trace_count": 64,
+      "warnings": [
+        "no sparse prefill pattern passed the configured kernel gate"
+      ]
+    },
+    {
+      "config": {
+        "adaptive_include_top_k": true,
+        "adaptive_min_score_reads_saved_ratio": 0.25,
+        "adaptive_target_mass": 0.9950000047683716,
+        "anchor_count": 4,
+        "block_size": 16,
+        "max_blocks": 4,
+        "max_tokens": 96,
+        "recent_window": 32,
+        "top_k": 8,
+        "vertical_stride": 16
+      },
+      "gate": {
+        "min_score_reads_saved_ratio": 0.5,
+        "min_softmax_mass_coverage": 0.9950000047683716,
+        "min_top_k_recall": 0.75
+      },
+      "patterns": [
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.602462649345398,
+          "mean_softmax_mass_coverage": 0.3230368196964264,
+          "mean_top_k_recall": 0.626953125,
+          "min_score_reads_saved_ratio": 0.44615381956100464,
+          "min_softmax_mass_coverage": 0.039518795907497406,
+          "min_top_k_recall": 0.125,
+          "pass_count": 1,
+          "pass_rate": 0.015625,
+          "pattern": "a_shape",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.6000661253929138,
+          "mean_softmax_mass_coverage": 0.32497283816337585,
+          "mean_top_k_recall": 0.630859375,
+          "min_score_reads_saved_ratio": 0.4615384340286255,
+          "min_softmax_mass_coverage": 0.039372336119413376,
+          "min_top_k_recall": 0.125,
+          "pass_count": 1,
+          "pass_rate": 0.015625,
+          "pattern": "vertical_slash",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.3327755331993103,
+          "mean_softmax_mass_coverage": 0.902476966381073,
+          "mean_top_k_recall": 0.85546875,
+          "min_score_reads_saved_ratio": 0.01538461446762085,
+          "min_softmax_mass_coverage": 0.5199685096740723,
+          "min_top_k_recall": 0.5,
+          "pass_count": 5,
+          "pass_rate": 0.078125,
+          "pattern": "block_sparse",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.09141355752944946,
+          "mean_softmax_mass_coverage": 0.9795602560043335,
+          "mean_top_k_recall": 0.986328125,
+          "min_score_reads_saved_ratio": 0.0,
+          "min_softmax_mass_coverage": 0.7962251305580139,
+          "min_top_k_recall": 0.75,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "pattern": "hybrid_anchor_recent_blocks",
+          "trace_count": 64
+        },
+        {
+          "kernel_candidate": false,
+          "mean_score_reads_saved_ratio": 0.6188701391220093,
+          "mean_softmax_mass_coverage": 0.9713470935821533,
+          "mean_top_k_recall": 1.0,
+          "min_score_reads_saved_ratio": 0.25,
+          "min_softmax_mass_coverage": 0.8547543287277222,
+          "min_top_k_recall": 1.0,
+          "pass_count": 42,
+          "pass_rate": 0.65625,
+          "pattern": "adaptive_mass",
+          "trace_count": 64
+        }
+      ],
+      "schema": "SparsePrefillTraceBenchmarkV1",
+      "trace_count": 64,
+      "warnings": [
+        "no sparse prefill pattern passed the configured kernel gate"
+      ]
+    }
+  ],
+  "schema": "SparsePrefillTraceBenchRunV1",
+  "trace_count": 64,
+  "warnings": [
+    "candidate configs are a small first-pass sweep, not an exhaustive autotuner",
+    "use real layer/head traces before committing to CUDA work"
+  ]
+}

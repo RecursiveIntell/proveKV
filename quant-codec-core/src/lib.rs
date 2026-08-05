@@ -5,6 +5,7 @@ pub mod digest;
 pub mod dtype;
 pub mod error;
 pub mod eval;
+pub mod hybrid;
 pub mod ids;
 pub mod shape;
 
@@ -13,6 +14,10 @@ pub use digest::{ArtifactDigest, CodecProfileDigest};
 pub use dtype::DType;
 pub use error::QuantCodecError;
 pub use eval::EvalReport;
+pub use hybrid::{
+    HybridAxis, HybridCacheLayoutV1, HybridComponentKind, HybridComponentLayoutV1,
+    HybridSequenceSemantics,
+};
 pub use ids::{CodecId, ModelFingerprint, TokenizerFingerprint};
 pub use shape::{
     HeadId, KvAttentionKind, KvCacheShapeV2, KvLayout, KvRole, KvSliceRequest, KvTensorShape,
