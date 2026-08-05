@@ -1,0 +1,55 @@
+# proveKV Bridge Configuration
+# Per-application overrides for state reuse behavior.
+
+[apps.chat]
+enabled = true
+max_forks = 16
+freshness_secs = 300
+fork_overlap_min = 0.8
+
+[apps.rag]
+enabled = true
+max_forks = 32
+freshness_secs = 600
+fork_overlap_min = 0.7
+
+[apps.agent]
+enabled = true
+max_forks = 8
+freshness_secs = 120
+fork_overlap_min = 0.9
+
+[apps.workflow]
+enabled = true
+max_forks = 4
+freshness_secs = 3600
+fork_overlap_min = 0.95
+
+[apps.tool]
+enabled = true
+max_forks = 2
+freshness_secs = 60
+fork_overlap_min = 0.99
+
+[apps.memory]
+enabled = true
+max_forks = 64
+freshness_secs = 1800
+fork_overlap_min = 0.5
+
+[apps.context]
+enabled = true
+max_forks = 8
+freshness_secs = 300
+fork_overlap_min = 0.85
+
+[default]
+enabled = true
+max_forks = 16
+freshness_secs = 300
+fork_overlap_min = 0.8
+
+[retention]
+retention_secs = 3600
+max_total_states = 10000
+max_total_bytes = 1073741824

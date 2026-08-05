@@ -42,6 +42,7 @@
 //! let (shell, mat_receipt) = pool.materialize_shell("agent_1", &[], 42).unwrap();
 //! ```
 
+pub mod apps;
 pub mod branch;
 #[cfg(feature = "bridge")]
 pub mod bridge;
