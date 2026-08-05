@@ -69,11 +69,25 @@ def capture_prefix(
 
     past_key_values = outputs.past_key_values
     layers = {}
-    for layer_idx, (k, v) in enumerate(past_key_values):
-        layers[layer_idx] = {
-            "k": k.cpu().clone(),
-            "v": v.cpu().clone(),
-        }
+
+    # Handle both legacy tuple format and DynamicCache.
+    if hasattr(past_key_values, 'key_cache'):
+        # DynamicCache (transformers >= 5.x)
+        for layer_idx in range(len(past_key_values.key_cache)):
+            k = past_key_values.key_cache[layer_idx]
+            v = past_key_values.value_cache[layer_idx]
+            if k is not None and v is not None:
+                layers[layer_idx] = {
+                    "k": k.cpu().clone(),
+                    "v": v.cpu().clone(),
+                }
+    else:
+        # Legacy tuple of (k, v) pairs.
+        for layer_idx, (k, v) in enumerate(past_key_values):
+            layers[layer_idx] = {
+                "k": k.cpu().clone(),
+                "v": v.cpu().clone(),
+            }
 
     # Compute model config digest.
     config_json = json.dumps(model.config.to_dict(), sort_keys=True)
