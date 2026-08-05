@@ -89,3 +89,4 @@ pub use receipt::{
 pub use shape::{AttentionType, KvTensorShape};
 pub use shell::{AgentShell, ShellLayer};
 pub use state_id::HybridStateId;
+pub use state_store::StateStore;
