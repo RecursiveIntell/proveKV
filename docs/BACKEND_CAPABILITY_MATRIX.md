@@ -16,7 +16,7 @@ Probed and admitted capabilities per backend. Empty cells = not yet probed.
 | **Lease authority** | ✅ (Rust store) | | | |
 | **Mark-and-sweep GC** | ✅ (Rust store) | | | |
 | **CPU-only execution** | ✅ | ✅ (when available) | | |
-| **GPU execution** | Not targeted | Not targeted | | |
+| **GPU execution (CUDA float16)** | ✅ GTX 1070 sm_61, CUDA 11.8 | ❌ | | |
 | **Batch > 1** | Not targeted | Not targeted | | |
 | **Beam search** | Not targeted | Not targeted | | |
 

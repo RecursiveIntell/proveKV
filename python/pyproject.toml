@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Pinned Qwen3.5 capture and replay adapter for proveKV hybrid state runtime"
 requires-python = ">=3.10"
 dependencies = [
-    "torch>=2.5.0",
+    "torch>=2.1.0",
     "transformers @ git+https://github.com/huggingface/transformers.git",
     "safetensors>=0.4.0",
     "blake3>=0.4.0",

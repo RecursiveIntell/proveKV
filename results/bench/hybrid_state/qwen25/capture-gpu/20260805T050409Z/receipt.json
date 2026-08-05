@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "kind": "hwos-qwen35-capture",
+  "run_id": "20260805T050409Z",
+  "model": "Qwen/Qwen2.5-0.5B",
+  "revision": "main",
+  "device": "cuda",
+  "dtype": "float16",
+  "num_layers": 24,
+  "num_tokens": 4,
+  "page_count": 48,
+  "total_bytes": 98304,
+  "output_dir": "results/bench/hybrid_state/qwen25/capture-gpu/20260805T050409Z",
+  "status": "completed"
+}

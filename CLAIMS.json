@@ -200,6 +200,20 @@
       "model": "Qwen/Qwen2.5-0.5B",
       "baseline_agreement": "5/5",
       "pages_verified": 48
+    },
+    "p0c_gpu_gate": {
+      "claim": "P0-C GPU gate: Qwen2.5-0.5B on MSI GTX 1070 (CUDA 11.8, float16). 5/5 baselines agree (token 34208), 48 KV pages from 24 layers, BLAKE3 roundtrip verified, DynamicCache reconstruction, suffix decode produces valid token.",
+      "claim_class": "test_gate",
+      "receipt": "results/bench/hybrid_state/qwen25/capture-gpu/20260805T050409Z/receipt.json",
+      "git_commit": "4227b82",
+      "date": "2026-08-05",
+      "host": "msi",
+      "gpu": "NVIDIA GeForce GTX 1070 (sm_61)",
+      "cuda": "11.8",
+      "dtype": "float16",
+      "model": "Qwen/Qwen2.5-0.5B",
+      "baseline_agreement": "5/5",
+      "pages_verified": 48
     }
   }
 }

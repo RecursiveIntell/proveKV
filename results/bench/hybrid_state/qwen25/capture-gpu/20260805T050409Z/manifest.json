@@ -1,0 +1,548 @@
+{
+  "schema": "provekv_hybrid_state_manifest_v1",
+  "model_id": "Qwen/Qwen2.5-0.5B",
+  "revision": "main",
+  "config_digest": "sha256:b90dc6d898120aeb1963ade15aed0f33c1fa98ccbf313d0a3aa3a73e434c482b",
+  "tokenizer_digest": "sha256:68d5415417a92317fec2e1811e7b852817c5d6956ab02bc8ea57375d8a2fb008",
+  "token_ids": [
+    785,
+    3974,
+    13876,
+    38835
+  ],
+  "num_layers": 24,
+  "num_tokens": 4,
+  "dtype": "torch.float16",
+  "device": "cuda",
+  "page_manifest": [
+    {
+      "page_id": "layer000_k",
+      "digest": "d367cb7f2d717a1da2a126d41efef98096b59dd864954309fb84a6f0e750df25",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer000_v",
+      "digest": "0402dae61c4fb2d41a5047ada92a7081f4e94cb4ba7f262524bf200fdd35a75f",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer001_k",
+      "digest": "5fa2b13eb6ac71af9e6aa32553db18e13cad310e3cf650f2ac7f04eaae49759f",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer001_v",
+      "digest": "b1227a416e0bfc2999d2e01f840751bb3695ad4a99a777caf6c8cefc45f35908",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer002_k",
+      "digest": "ddfdf4407c0ec7d84746dd40bfbb3c0b7aba8faed05280b57749d41b97aa68ca",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer002_v",
+      "digest": "70654103b697a5b852de6d6133ec6bdaafe2e7164a19535202afeeae5cca9cc3",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer003_k",
+      "digest": "171682ce5a2ff3ed4480e7653d945b9a54e1b8cce9daf1dd04843d535254146a",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer003_v",
+      "digest": "85bbc6dcbdf2b16f495f94d735f25eccb368626d0a8e5fe494278040a5b25a98",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer004_k",
+      "digest": "8124fea3d0226c28824ed1d931129e7348c2f40d03149027a5247f3e7e17652e",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer004_v",
+      "digest": "b5c1344b9899a1096092b0208b5bdd0551788f0ddc9ac83dad3140de072b521e",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer005_k",
+      "digest": "c7e9d904930c46b3583e5fded1004389bde0c5c2bdcda4989aafa7e2ec0d8a17",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer005_v",
+      "digest": "6f8d0120c3e1b31abe66eae6d8b2387c5a841423a271259695dbec8479adfb3d",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer006_k",
+      "digest": "328f7ef0e48c7118336a907e89e716d4054678c86e38069edcbcf9ddaf9ea663",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer006_v",
+      "digest": "6c5efa08f4949b4f795cf6d13c2e9a37cbcf2d7fc41befe0a181f3ef6a7b2149",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer007_k",
+      "digest": "313611f2873199f75255d69df37eed51121e8e3f1e807ec748386a151d87e684",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer007_v",
+      "digest": "af8dfe1b82b371f4534b346d0f4ec4675fcdfa627d74ad55c7af52167a4cadfc",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer008_k",
+      "digest": "04c4a1e9b7de7da69314ad38a1e553f301e07c69538a8803fb6f68d793c83793",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer008_v",
+      "digest": "c5b60e4c6353e0ea4390b4b321509ef92b426dfe1b1b5d861f11db70160b4707",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer009_k",
+      "digest": "38d169d9079f3bb2ccdcaaca064786ac741a91e93ee5a40aab9c7ba0b527af32",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer009_v",
+      "digest": "533101b07bbd751cfb4e81c785657314470a4db389422bb55747232305a849a8",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer010_k",
+      "digest": "42d499c7d63b355bf1613af3574c8b95e9eb2e639815f8532e3a80ee987b1343",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer010_v",
+      "digest": "0c89cdd1080fc6cc935948b07a4c8ea0b7b43d129e1329f98a1794771af338db",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer011_k",
+      "digest": "feafd02b1e76a3a22b7462023e8c82b7113cd5ade0486d0fb179d48c2e379381",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer011_v",
+      "digest": "eaf0bd1344917682e5fc22f3b693c7a54fa173eab1ddf80f1df2e86d000e6f5b",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer012_k",
+      "digest": "dc2f3cd1ae879d8104e0cc83f00ebda775c05fe8374af91bab9db3f61b9d59fe",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer012_v",
+      "digest": "c787983f96b66e92f074ac255acd0927655dde91f358383e2e4d8701b81a102e",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer013_k",
+      "digest": "2528f83c1648a807fa21a77e46faa92b437e92c170a9f4d9a76e9a6addc55f24",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer013_v",
+      "digest": "0121f6a74c0e1966aa89ddc5c1966142ef1d1ec9cfbcb8a208d930d647ea6f0c",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer014_k",
+      "digest": "f6aab2047b893fc0a4b32a5cbeebd5486dd541e534cb9941d849eeb055796aaa",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer014_v",
+      "digest": "7e89f27a9525ad949bbef919068bea1ad73f2fb3a1c62f38a535ed1711c37b01",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer015_k",
+      "digest": "0088ac8530d10ef43c56b1e7b4124cd4eeaccb4910b0f51a25f8d16a7845e14a",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer015_v",
+      "digest": "24c4ced72ffe79145d993735ab311640b264b6cfebb90dd99f5bdccc515af294",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer016_k",
+      "digest": "9ab982a10f31c8e3997082b4fa974654b408315f35c6ebb379c92260f0a6d4c8",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer016_v",
+      "digest": "f56a9e1c02a72808127284f66ae27034e13da022012ead287ad5b7c67d3d529b",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer017_k",
+      "digest": "d114a102d773a0463b5e00ef0a3ed86a3f26927301136b43243ccd6a1c7e473e",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer017_v",
+      "digest": "e1898cfc822ba83c0b0a8e1698ec95fe4d07671537eef3f9b5e2bd6bff46dddd",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer018_k",
+      "digest": "1477924c3ca2e6f118a8fa1e2fc3c7ca4bd3fe632ba271fbe3fd51e067f34817",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer018_v",
+      "digest": "7840ee5fb15aac9171b05e0068dd826eb5c3b70c27823ac9bcc7b4170a2df2ed",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer019_k",
+      "digest": "26a295f40ed46f0684ede8fd81ef9993325433e8db6ab7da92426cee2e2be603",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer019_v",
+      "digest": "37ed0aff3e457ec457205a2303e72b5b7096b099ea4be66c156953c45baa37b0",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer020_k",
+      "digest": "88569bff12561152a6f65918777cd03aab6944f37b63f82b33fe3fbd5141078f",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer020_v",
+      "digest": "01d687fb97e89f5aa077a54e7f118941dd8430d00ca3ba6f906917a132e47e9e",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer021_k",
+      "digest": "1cd4b1b86d4471be5d4d229145a940167a1f813670d6db390fca73a24a20c054",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer021_v",
+      "digest": "2fc340d9e1e6a68c6cdb189532a70ca071121b836fad0c4c1c26d8a90ed74181",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer022_k",
+      "digest": "6c75b45139d59e6e4886589a3aa2aac45d90944b214e510a28a74d2e045a505d",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer022_v",
+      "digest": "3028921e6d4a6d426252da9e114932a443e5dc568485ab3621ce8de2f12343dd",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer023_k",
+      "digest": "e28c444fd4f25433928ee6f1cd33b758b3ab67119b935806741d9e12c2d6e176",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    },
+    {
+      "page_id": "layer023_v",
+      "digest": "c4c4e53bcbe79aac26ec804d9fdf1b5407d73f71a7ab9653e324e40214cec96f",
+      "bytes": 2048,
+      "shape": [
+        1,
+        2,
+        4,
+        64
+      ]
+    }
+  ],
+  "captured_at": "20260805T050409Z"
+}
