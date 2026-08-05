@@ -72,8 +72,8 @@ def capture_prefix(
 
     # DynamicCache (iterable of (k, v) tuples per layer).
     for layer_idx, kv_pair in enumerate(past_key_values):
-        if isinstance(kv_pair, tuple) and len(kv_pair) == 2:
-            k, v = kv_pair
+        if isinstance(kv_pair, tuple) and len(kv_pair) >= 2:
+            k, v = kv_pair[0], kv_pair[1]
         elif hasattr(kv_pair, 'key') and hasattr(kv_pair, 'value'):
             # Legacy Cache object with .key/.value attributes.
             k, v = kv_pair.key, kv_pair.value
