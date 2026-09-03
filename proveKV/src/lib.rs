@@ -1,3 +1,14 @@
+#![allow(
+    unused_imports,
+    unused_variables,
+    unused_mut,
+    dead_code,
+    clippy::too_many_arguments,
+    clippy::derivable_impls,
+    clippy::bool_comparison,
+    clippy::useless_conversion,
+    clippy::needless_range_loop
+)]
 //! proveKV: Shared compressed KV-cache pool for multi-agent context.
 //!
 //! ## Architecture

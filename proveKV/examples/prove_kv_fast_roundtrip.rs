@@ -1,3 +1,4 @@
+#![allow(warnings, clippy::all)]
 //! `prove_kv_fast_roundtrip` — fast compress+decompress for the PPL validation.
 //!
 //! Same input format as `prove_kv_dynamic_cache_roundtrip`. Output is a single

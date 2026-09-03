@@ -17,14 +17,14 @@ pub const CODE_SCHEMA: &str = "fib_code_v1";
 /// Magic + version prefix for the compact binary wire format.
 /// `F` `B` `1` = Fib Binary v1. Any decoder that sees a different
 /// magic should reject the payload as corrupt.
-pub const COMPACT_MAGIC: [u8; 3] = [b'F', b'B', b'1'];
+pub const COMPACT_MAGIC: [u8; 3] = *b"FB1";
 pub const COMPACT_VERSION: u8 = 1;
 
 /// Magic + version prefix for the batched binary wire format.
 /// `F` `B` `2` = Fib Binary v2 (batched). Stores the profile once
 /// per batch, then concatenates per-block payloads (norm + indices)
 /// with no per-block header.
-pub const BATCHED_MAGIC: [u8; 3] = [b'F', b'B', b'2'];
+pub const BATCHED_MAGIC: [u8; 3] = *b"FB2";
 pub const BATCHED_VERSION: u8 = 1;
 
 /// Encoded fixed-rate FibQuant artifact.
@@ -135,7 +135,7 @@ impl FibCodeV1 {
         // Validate packed index length
         let expected_packed_len = (block_count as usize)
             .checked_mul(wire_index_bits as usize)
-            .map(|bits| (bits + 7) / 8)
+            .map(|bits| bits.div_ceil(8))
             .ok_or_else(|| {
                 FibQuantError::ResourceLimitExceeded("packed index bits overflow".into())
             })?;
@@ -387,7 +387,7 @@ impl FibCodeV1 {
         // Validate packed index length matches the profile's expected length.
         let expected_packed_len = (block_count as usize)
             .checked_mul(wire_index_bits as usize)
-            .map(|bits| (bits + 7) / 8)
+            .map(|bits| bits.div_ceil(8))
             .ok_or_else(|| {
                 FibQuantError::ResourceLimitExceeded("packed index bits overflow".into())
             })?;
