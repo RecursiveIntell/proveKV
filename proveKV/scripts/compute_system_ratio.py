@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Compute the system-level N-agent compression ratio from the per-tier
-receipts and patch the state.json files with the correct number.
+Independently recompute the system-level N-agent compression ratio from the
+per-tier receipts and verify that the benchmark state contains the same
+derivation. This script never repairs or rewrites a benchmark receipt.
 
 System ratio formula:
-  raw_total = N_total_tokens * num_layers * num_kv_heads * head_dim * 2 * 4  (fp32 bytes)
+  raw_total = N_agents * baseline_tokens_per_agent * bytes_per_token_fp32  (fp32 bytes)
   compressed_total = pool_size_bytes + sum(per-agent shell_bytes)
   ratio = raw_total / compressed_total
 
 Where:
-  N_total_tokens = n_shared + N_agents * n_unique  (naive: each agent has full cache)
-  pool_size_bytes = shell_output_*_shared_pool_receipt.json
-  per-agent shell_bytes = shell_output_*_agents_receipt.json
+  baseline_tokens_per_agent = n_shared + n_unique
+    (one independent agent context contains the shared prefix plus its own tail)
+  raw_total = N_agents * baseline_tokens_per_agent * bytes_per_token_fp32
+  pool_size_bytes = shell_output_*/shared_pool_receipt.json
+  per-agent shell_bytes = shell_output_*/agents_receipt.json
 
 The "naive" baseline assumes each agent has its own full cache of
 n_shared + n_unique tokens (no sharing). The compressed system has ONE
@@ -31,8 +34,9 @@ def main():
 
     for mode in ("lossless", "lossy"):
         state_path = bench_dir / f"state_{mode}.json"
-        pool_path = bench_dir / f"shell_output_{mode}_shared_pool_receipt.json"
-        agents_path = bench_dir / f"shell_output_{mode}_agents_receipt.json"
+        output_dir = bench_dir / f"shell_output_{mode}"
+        pool_path = output_dir / "shared_pool_receipt.json"
+        agents_path = output_dir / "agents_receipt.json"
 
         with state_path.open() as f:
             state = json.load(f)
@@ -53,9 +57,12 @@ def main():
             num_layers * num_kv_heads * head_dim * 2 * 4
         )
 
-        # Naive baseline: each agent has its own full cache
-        n_total_per_agent = n_shared + n_unique
-        raw_total = n_agents * n_total_per_agent * bytes_per_token_fp32
+        # Naive baseline: each agent has its own independent context made of
+        # the shared prefix plus that agent's unique tail. Keep this derivation
+        # explicit in the receipt so it cannot be confused with the aggregate
+        # concatenated PPL fixture (n_shared + n_agents * n_unique).
+        baseline_tokens_per_agent = n_shared + n_unique
+        raw_total = n_agents * baseline_tokens_per_agent * bytes_per_token_fp32
 
         # Compressed: 1 pool (shared prefix) + N small shells (unique tails)
         pool_bytes = pool["pool_size_bytes"]
@@ -65,17 +72,31 @@ def main():
         system_ratio = raw_total / compressed_total
         pool_ratio = pool["compression_ratio"]
 
-        # Write back to state.json
-        state["phase1"]["compression_ratio"] = system_ratio
-        state["phase1"]["raw_total_bytes"] = raw_total
-        state["phase1"]["compressed_total_bytes"] = compressed_total
-        state["phase1"]["pool_size_bytes"] = pool_bytes
-        state["phase1"]["shells_size_bytes"] = shells_bytes
-        state["phase1"]["pool_compression_ratio"] = pool_ratio
-        state["phase1"]["naive_per_agent_full_cache"] = True
-
-        with state_path.open("w") as f:
-            json.dump(state, f, indent=2)
+        expected = {
+            "compression_ratio": system_ratio,
+            "raw_total_bytes": raw_total,
+            "compressed_total_bytes": compressed_total,
+            "pool_size_bytes": pool_bytes,
+            "shells_size_bytes": shells_bytes,
+            "pool_compression_ratio": pool_ratio,
+            "naive_per_agent_full_cache": True,
+            "baseline_definition": (
+                "N independent agent contexts, each containing n_shared + n_unique tokens; "
+                "this size estimand is distinct from the aggregate PPL fixture."
+            ),
+            "baseline_tokens_per_agent": baseline_tokens_per_agent,
+            "baseline_bytes_per_token_fp32": bytes_per_token_fp32,
+        }
+        phase1 = state.get("phase1")
+        if not isinstance(phase1, dict) or phase1.get("status") != "complete":
+            raise SystemExit(f"{state_path}: phase1 is not complete")
+        for field, value in expected.items():
+            observed = phase1.get(field)
+            if isinstance(value, float):
+                if not isinstance(observed, (int, float)) or abs(observed - value) > 0.001:
+                    raise SystemExit(f"{state_path}: phase1.{field} does not match receipts")
+            elif observed != value:
+                raise SystemExit(f"{state_path}: phase1.{field} does not match receipts")
 
         print(f"[{mode}] system compression ratio: {system_ratio:.4f}x")
         print(f"[{mode}]   pool: {pool_bytes:,} B ({pool_ratio:.2f}x)")
@@ -83,7 +104,7 @@ def main():
         print(f"[{mode}]   compressed: {compressed_total:,} B = {compressed_total/1e6:.2f} MB")
         print(f"[{mode}]   raw (naive): {raw_total:,} B = {raw_total/1e6:.2f} MB")
         print(f"[{mode}]   ratio: {raw_total/compressed_total:.2f}x")
-        print(f"[{mode}] state updated: {state_path}")
+        print(f"[{mode}] state verified: {state_path}")
         print()
 
 

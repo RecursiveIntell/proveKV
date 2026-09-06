@@ -1,5 +1,10 @@
 # PPL Validation Report — HuggingFaceTB/SmolLM2-1.7B-Instruct on file:/tmp/code_corpus.txt
 
+> **Historical, unadmitted quality output.** This report's PPL path used a
+> full-cache/full-input method that does not satisfy the current cache-aligned
+> held-out-continuation contract. PPL statements below are retained as history,
+> not publication evidence.
+
 - **Generated:** 2026-06-02T14:19:51.760367-05:00
 - **Model:** `HuggingFaceTB/SmolLM2-1.7B-Instruct`
 - **Corpus:** `file:/tmp/code_corpus.txt` (n_tokens=1024, ppl_frac=0.3)

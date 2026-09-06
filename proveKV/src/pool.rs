@@ -150,10 +150,11 @@ impl SharedKVPool {
         Self::build_with_policy(corpus, shape, seed, CompressionPolicy::default_two_tier())
     }
 
-    /// Build with an explicit compression policy. The lossless default
-    /// (fb2+tqb1) preserves bit-exact PPL. Set the policy's
-    /// `turbo_config.radii_compression = Lossy` to opt into TQB1-L and
-    /// the smaller (lossy) shell tier.
+    /// Build with an explicit compression policy. "Lossless" means the
+    /// default TQB1 shell keeps f32 radii; it does not imply bit-exact K/V
+    /// reconstruction or PPL neutrality. Set the policy's
+    /// `turbo_config.radii_compression = Lossy` to opt into TQB1-L and the
+    /// smaller shell tier. See `CLAIMS.json` for measured quality results.
     pub fn build_with_policy(
         corpus: &[(String, Vec<f32>)],
         shape: &KvTensorShape,

@@ -1,5 +1,10 @@
 # PPL Validation Report — Qwen/Qwen2.5-0.5B-Instruct on wikitext-2
 
+> **Historical, unadmitted quality output.** This report's PPL path used a
+> full-cache/full-input method that does not satisfy the current cache-aligned
+> held-out-continuation contract. PPL statements below are retained as history,
+> not publication evidence.
+
 - **Generated:** 2026-06-02T14:37:44.157463-05:00
 - **Model:** `Qwen/Qwen2.5-0.5B-Instruct`
 - **Corpus:** `wikitext-2` (n_tokens=1024, ppl_frac=0.3)

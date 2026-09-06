@@ -1,5 +1,10 @@
 # PPL Validation Report — HuggingFaceTB/SmolLM2-1.7B-Instruct on wikitext-2
 
+> **Historical, unadmitted quality output.** This report's PPL path used a
+> full-cache/full-input method that does not satisfy the current cache-aligned
+> held-out-continuation contract. PPL statements below are retained as history,
+> not publication evidence.
+
 - **Generated:** 2026-06-03T14:03:11.305541-05:00
 - **Model:** `HuggingFaceTB/SmolLM2-1.7B-Instruct`
 - **Corpus:** `wikitext-2` (n_tokens=1024, ppl_frac=0.3)

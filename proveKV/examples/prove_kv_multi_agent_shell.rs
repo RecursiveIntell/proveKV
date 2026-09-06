@@ -103,6 +103,24 @@ struct BenchState {
     lossy: bool,
 }
 
+fn independent_agent_f32_bytes(
+    shared_tokens: usize,
+    unique_tokens: &[usize],
+    num_layers: usize,
+    num_kv_heads: usize,
+    head_dim: usize,
+) -> Option<u64> {
+    let bytes_per_token = num_layers
+        .checked_mul(num_kv_heads)?
+        .checked_mul(head_dim)?
+        .checked_mul(2)?
+        .checked_mul(4)?;
+    let total_tokens = unique_tokens.iter().try_fold(0usize, |total, unique| {
+        total.checked_add(shared_tokens.checked_add(*unique)?)
+    })?;
+    u64::try_from(total_tokens.checked_mul(bytes_per_token)?).ok()
+}
+
 fn write_kv_binary(path: &PathBuf, manifest: &serde_json::Value, layers: &[(Vec<f32>, Vec<f32>)]) {
     let mut f = fs::File::create(path).expect("create kv bin");
     let manifest_bytes = serde_json::to_vec(manifest).expect("serialize manifest");
@@ -131,7 +149,8 @@ fn main() {
         std::process::exit(1);
     }
     let lossy = args.iter().any(|a| a == "--lossy");
-    // Parse --bits N. Default 4 (PPL-validated 36.00x lossless / 68.04x lossy).
+    // Parse --bits N. Default 4; current receipt-bound size results are
+    // 40.50x lossless / 76.54x lossy for the named N=8 f32 baseline.
     let bits: u8 = match args.iter().position(|a| a == "--bits") {
         Some(i) if i + 1 < args.len() => args[i + 1]
             .parse()
@@ -344,17 +363,23 @@ fn main() {
 
     // Compute the bench state.
     let n_agents = input.agents.len() as u32;
-    let naive_total_bytes: u64 = n_agents as u64
-        * (input.shared_tokens.len() as u64
-            * num_layers as u64
-            * num_kv_heads as u64
-            * head_dim as u64
-            * 2
-            * 4);
+    let unique_token_counts: Vec<usize> = input
+        .agents
+        .iter()
+        .map(|agent| agent.tokens.len())
+        .collect();
+    let naive_total_bytes = independent_agent_f32_bytes(
+        input.shared_tokens.len(),
+        &unique_token_counts,
+        num_layers,
+        num_kv_heads,
+        head_dim,
+    )
+    .expect("naive f32 baseline size overflow");
     let total_with_sharing_bytes = pool.manifest.pool_size_bytes + total_shell_bytes;
     let state = BenchState {
         model: format!(
-            "Qwen2.5-0.5B ({} layers, {} kv heads, head_dim {})",
+            "KV shape ({} layers, {} kv heads, head_dim {})",
             num_layers, num_kv_heads, head_dim
         ),
         n_agents,
@@ -386,4 +411,16 @@ fn main() {
         state.naive_total_bytes,
         state.memory_reduction_factor
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::independent_agent_f32_bytes;
+
+    #[test]
+    fn naive_baseline_includes_each_agents_shared_prefix_and_unique_tail() {
+        let bytes = independent_agent_f32_bytes(800, &[28; 8], 24, 32, 64)
+            .expect("fixture must fit in u64");
+        assert_eq!(bytes, 2_604_662_784);
+    }
 }

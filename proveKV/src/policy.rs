@@ -131,9 +131,9 @@ pub struct FibConfig {
 impl FibConfig {
     /// The benchmark-proven configuration: k=4, N=32. The fib codec is a
     /// codebook-based vector quantizer — reconstruction is bounded by the
-    /// k=4 codebook resolution, NOT bit-exact lossless. PPL-validated
-    /// claim: 21.33x pool-tier ratio at this config on SmolLM2-1.7B with
-    /// `delta_ppl_pct = +0.00%` (msi 2026-06-03). See CLAIMS.json.
+    /// k=4 codebook resolution, NOT bit-exact lossless. The measured pool-tier
+    /// size ratio is 21.33x at this config. See CLAIMS.json for the separately
+    /// scoped aggregate-fixture PPL evidence.
     pub fn default_k4_n32() -> Self {
         Self {
             k: 4,
@@ -222,19 +222,16 @@ pub struct TurboConfig {
     pub projections: usize,
     /// How to compress radii in the wire format. Defaults to `Lossless`
     /// so receipts remain bit-exact. Set to `Lossy` to enable the
-    /// `turbo_8bit_batched_lossy` codec and the 58.14× system number.
+    /// `turbo_8bit_batched_lossy` codec.
     #[serde(default)]
     pub radii_compression: RadiiCompression,
 }
 
 impl TurboConfig {
-    /// The benchmark-proven configuration: 4-bit angles, 32 projections,
-    /// lossless f32 radii. PPL-validated (SmolLM2-1.7B, N=8): **36.00x** at
-    /// bit-exact `delta_ppl_pct = +0.00%` (vs oracle). The 4-bit angle
-    /// discretization is below the signal threshold for K/V in transformer
-    /// attention, so reducing the per-angle bit count from 8 to 4 is a
-    /// 5× reduction in angle-bytes (32 B/vec → 16 B/vec) with no measurable
-    /// effect on the forward pass.
+    /// The current measured configuration: 4-bit angles, 32 projections,
+    /// lossless f32 radii. The N=8 size result is 40.50x versus the named
+    /// independent-context f32 baseline. Aggregate-fixture PPL is a separate
+    /// measurement; see `CLAIMS.json`.
     pub fn default_4bit() -> Self {
         Self {
             bits: 4,
@@ -244,8 +241,8 @@ impl TurboConfig {
     }
 
     /// Lossy variant of the 4-bit config. 1-byte BlockLogU8 radii, ~4×
-    /// smaller shell than 4-bit lossless. PPL-validated:
-    /// **68.04x** at bit-exact `delta_ppl_pct = +0.00%`.
+    /// smaller shell than 4-bit lossless. The current N=8 size result is
+    /// 76.54x versus the named independent-context f32 baseline.
     pub fn default_4bit_lossy() -> Self {
         Self {
             bits: 4,
@@ -255,7 +252,8 @@ impl TurboConfig {
     }
 
     /// Legacy 8-bit configuration kept for back-compat. Superseded by
-    /// [`default_4bit`](Self::default_4bit) (36.00x) — same PPL, 10% larger.
+    /// [`default_4bit`](Self::default_4bit); its shell payload is 10% larger
+    /// in the measured N=8 shape.
     pub fn default_8bit() -> Self {
         Self {
             bits: 8,
@@ -265,8 +263,8 @@ impl TurboConfig {
     }
 
     /// Lossy variant of the 8-bit config. 1-byte radii, ~4× smaller shell
-    /// than 8-bit lossless. Superseded by [`default_4bit_lossy`](Self::default_4bit_lossy)
-    /// (68.04x) — same PPL, 16% larger.
+    /// than 8-bit lossless. Superseded by [`default_4bit_lossy`](Self::default_4bit_lossy);
+    /// its shell payload is 16% larger in the measured N=8 shape.
     pub fn default_8bit_lossy() -> Self {
         Self {
             bits: 8,
@@ -304,9 +302,10 @@ impl TurboConfig {
 
 /// Hard-coded two-tier compression policy.
 ///
-/// All ratios in this module are PPL-validated on SmolLM2-1.7B +
-/// WikiText-2 at N=8 agents, 800 shared + 28×8 unique tokens, 1024
-/// tokens total (msi 2026-06-03, `delta_ppl_pct = +0.00%`).
+/// The N=8 ratios below are byte-derived size results for eight independent
+/// contexts of 800 shared + 28 unique tokens. PPL is separately checked on
+/// one aggregate SmolLM2-1.7B + WikiText-2 fixture; it is not an
+/// independent-prompt per-agent quality result.
 ///
 /// Note: "lossless" in this codebase refers to the shell tier's radii
 /// profile (no BlockLogU8 quantization). The fib cold tier is a
@@ -317,8 +316,8 @@ impl TurboConfig {
 ///
 /// - Shared pool (cold tier): fib-quant at k=4, N=32 → 21.33× pool
 ///   ratio (vs f32-raw KV baseline)
-/// - Agent shells (hot tier): turbo-quant at b=4 (default) → 36.00×
-///   system lossless / 68.04× system lossy at N=8 (vs f32-raw KV
+/// - Agent shells (hot tier): turbo-quant at b=4 (default) → 40.50×
+///   system lossless / 76.54× system lossy at N=8 (vs f32-raw KV
 ///   baseline). At the legacy b=8 config, the system was 33.16× / 58.56×.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompressionPolicy {
@@ -335,9 +334,9 @@ pub struct CompressionPolicy {
 impl CompressionPolicy {
     /// Create the default benchmark-proven two-tier policy.
     ///
-    /// Default is **b=4 lossless** (36.00x PPL-validated). PPL is bit-exact
-    /// identical to the oracle at this bit rate, and 10% smaller than the
-    /// legacy b=8 config. For 68.04x, use [`default_two_tier_lossy`].
+    /// Default is **b=4 lossless**. Its current N=8 size result is 40.50x,
+    /// and its shell payload is 10% smaller than the legacy b=8 config.
+    /// For the lossy size profile, use [`default_two_tier_lossy`].
     pub fn default_two_tier() -> Self {
         Self {
             shared_codec: CODEC_FIB_K4_N32_BATCHED.into(),
@@ -347,8 +346,8 @@ impl CompressionPolicy {
         }
     }
 
-    /// Lossy variant of [`default_two_tier`]. 68.04x PPL-validated at b=4
-    /// with `delta_ppl_pct = +0.00%` (lossless oracle, but BlockLogU8 radii).
+    /// Lossy variant of [`default_two_tier`]. Its current N=8 size result is
+    /// 76.54x versus the named independent-context f32 baseline.
     pub fn default_two_tier_lossy() -> Self {
         Self {
             shared_codec: CODEC_FIB_K4_N32_BATCHED.into(),

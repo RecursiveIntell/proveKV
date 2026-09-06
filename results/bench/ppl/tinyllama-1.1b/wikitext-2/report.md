@@ -1,5 +1,10 @@
 # PPL Validation Report — TinyLlama/TinyLlama-1.1B-Chat-v1.0 on wikitext-2
 
+> **Historical, unadmitted quality output.** This report's PPL path used a
+> full-cache/full-input method that does not satisfy the current cache-aligned
+> held-out-continuation contract. PPL statements below are retained as history,
+> not publication evidence.
+
 - **Generated:** 2026-06-02T14:14:12.557257-05:00
 - **Model:** `TinyLlama/TinyLlama-1.1B-Chat-v1.0`
 - **Corpus:** `wikitext-2` (n_tokens=1024, ppl_frac=0.3)

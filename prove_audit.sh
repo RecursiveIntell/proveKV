@@ -23,6 +23,10 @@ echo "=== F4: shell manifest must not lie about its codec ==="
 cargo test --release -p provekv --lib manifest::tests 2>&1 | tail -2
 
 echo ""
+echo "=== BENCHMARK baseline + PPL-window provenance ==="
+python3 scripts/validate_benchmark_provenance.py
+
+echo ""
 echo "=== CLAIMS.json schema + public surface drift ==="
 python3 -c "
 import json, sys
