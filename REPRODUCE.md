@@ -3,11 +3,22 @@
 Two ways: with the committed state.json (zero compute, just verify) or
 from scratch on a GPU host.
 
-## Verify the headline N=8 result (no GPU required)
+## Verify the current N=8 receipts (no GPU required)
 
-This checks the current Reddit-facing claim from committed receipts:
-SmolLM2-1.7B + WikiText-2, N=8 agents, 800 shared + 28×8 unique
-1024-token context, b=4 default hot tier.
+This checks the current size result and separately scoped shared-prefix
+continuation PPL result from committed receipts: SmolLM2-1.7B + WikiText-2,
+800 shared + 28×8 contiguous unique slices, b=4 default hot tier. The PPL
+forward consumes reconstructed shared-prefix K/V only; shell receipts support
+the size result and are not shell-quality evidence.
+
+Run the actual receipt and derivation gate first:
+
+```bash
+python3 scripts/validate_benchmark_provenance.py
+```
+
+The following optional snippet only displays the admitted claim ledger and
+confirms that its referenced files are present:
 
 ```bash
 python3 - <<'PY'
@@ -22,6 +33,8 @@ for key in ['smollm2_wikitext2_n8_lossless_default', 'smollm2_wikitext2_n8_lossy
     print(f"  oracle_ppl        = {c['oracle_ppl']:.4f}")
     print(f"  roundtrip_ppl     = {c['roundtrip_ppl']:.4f}")
     print(f"  delta_ppl_pct     = {c['delta_ppl_pct']:+.2f}%")
+    print(f"  size_publishable  = {c['publication_eligible']}")
+    print(f"  ppl_publishable   = {c['ppl_publication_eligible']}")
     print(f"  ratio_vs_f32_raw  = {ratio:.2f}x")
     print(f"  ratio_vs_fp16_eq  = {ratio / 2:.2f}x")
     print(f"  compressed_bytes  = {c['compressed_total_bytes']:,}")
@@ -34,23 +47,39 @@ Expected output:
 
 ```text
 smollm2_wikitext2_n8_lossless_default
-  oracle_ppl        = 6.1328
-  roundtrip_ppl     = 6.1328
-  delta_ppl_pct     = +0.00%
-  ratio_vs_f32_raw  = 36.00x
-  ratio_vs_fp16_eq  = 18.00x
+  oracle_ppl        = 7.2031
+  roundtrip_ppl     = 24.2344
+  delta_ppl_pct     = +236.44%
+  size_publishable  = True
+  ppl_publishable   = False
+  ratio_vs_f32_raw  = 40.50x
+  ratio_vs_fp16_eq  = 20.25x
   compressed_bytes  = 64,306,320
-  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/state_lossless.json
-  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/state_lossless.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/shared_pool_receipt.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/agents_receipt.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/shell_output_lossless/state.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/source_manifest.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/source_envelope.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/token_ids.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/build_attestation.json
 smollm2_wikitext2_n8_lossy_default
-  oracle_ppl        = 6.1328
-  roundtrip_ppl     = 6.1328
-  delta_ppl_pct     = +0.00%
-  ratio_vs_f32_raw  = 68.04x
-  ratio_vs_fp16_eq  = 34.02x
+  oracle_ppl        = 7.2031
+  roundtrip_ppl     = 24.2344
+  delta_ppl_pct     = +236.44%
+  size_publishable  = True
+  ppl_publishable   = False
+  ratio_vs_f32_raw  = 76.54x
+  ratio_vs_fp16_eq  = 38.27x
   compressed_bytes  = 34,028,688
-  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/state_lossy.json
-  receipt_exists    = True results/ppl_multi_agent_b4_post_audit/smollm2-1.7b/wikitext-2-n8_lossy/shell_output_lossy/agents_receipt.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/state_lossy.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/shell_output_lossy/shared_pool_receipt.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/shell_output_lossy/agents_receipt.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/shell_output_lossy/state.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/source_manifest.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/source_envelope.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/token_ids.json
+  receipt_exists    = True results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8/build_attestation.json
 ```
 
 For the full public-surface audit, run:
@@ -59,7 +88,81 @@ For the full public-surface audit, run:
 bash prove_audit.sh
 ```
 
-## Verify the legacy single-pool result (no GPU required)
+## Reproduce the current N=8 run from its exact source snapshot
+
+This is the from-scratch path for the current claim. It verifies and extracts
+the content-addressed source envelope captured for the MSI run, builds the
+multi-agent CLI, generates fresh lossless and lossy shell artifacts, and runs
+the cache-aligned shared-prefix continuation check. It requires an NVIDIA GPU,
+PyTorch with CUDA, `transformers`, `datasets`, the model download, and a Rust
+toolchain. Do not use `--reuse-shell-output` for this reproduction.
+
+```bash
+set -euo pipefail
+EVIDENCE=results/ppl_multi_agent_b4_provenance_v2/smollm2-1.7b/wikitext-2-n8
+python3 scripts/validate_benchmark_provenance.py
+RUN_ROOT=$(mktemp -d)
+
+python3 - "$EVIDENCE/source_envelope.json" "$RUN_ROOT" <<'PY'
+import base64, json, os, pathlib, sys, tarfile, io
+
+envelope = json.loads(pathlib.Path(sys.argv[1]).read_text())
+destination = pathlib.Path(sys.argv[2])
+with tarfile.open(fileobj=io.BytesIO(base64.b64decode(envelope["archive_b64"])), mode="r:gz") as bundle:
+    for member in bundle.getmembers():
+        path = pathlib.PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts or not member.isfile():
+            raise SystemExit(f"unsafe archive member: {member.name}")
+        payload = bundle.extractfile(member).read()
+        target = destination.joinpath(*path.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+        os.chmod(target, member.mode)
+PY
+
+MANIFEST_SHA=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["manifest_sha256"])' "$EVIDENCE/source_envelope.json")
+ARCHIVE_SHA=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["archive_sha256"])' "$EVIDENCE/source_envelope.json")
+cd "$RUN_ROOT"
+cargo build --release --locked -p provekv --example prove_kv_multi_agent_shell
+mkdir -p output
+
+python3 proveKV/scripts/ppl_validate_multi_agent.py \
+  --model HuggingFaceTB/SmolLM2-1.7B-Instruct \
+  --corpus wikitext-2 \
+  --n-shared 800 --n-unique 28 --n-agents 8 \
+  --ppl-window-start 800 \
+  --output "$RUN_ROOT/output/state_lossless.json" \
+  --multi-agent-cli "$RUN_ROOT/target/release/examples/prove_kv_multi_agent_shell" \
+  --source-manifest-sha256 "$MANIFEST_SHA" \
+  --source-archive-sha256 "$ARCHIVE_SHA"
+
+python3 proveKV/scripts/ppl_validate_multi_agent.py \
+  --model HuggingFaceTB/SmolLM2-1.7B-Instruct \
+  --corpus wikitext-2 \
+  --n-shared 800 --n-unique 28 --n-agents 8 \
+  --ppl-window-start 800 --lossy \
+  --cache-path "$RUN_ROOT/output/cache_oracle.pt" \
+  --output "$RUN_ROOT/output/state_lossy.json" \
+  --multi-agent-cli "$RUN_ROOT/target/release/examples/prove_kv_multi_agent_shell" \
+  --source-manifest-sha256 "$MANIFEST_SHA" \
+  --source-archive-sha256 "$ARCHIVE_SHA"
+
+python3 proveKV/scripts/compute_system_ratio.py "$RUN_ROOT/output"
+```
+
+The public claim does not require the PPL value to reproduce exactly across
+different GPU/software stacks. Any rerun must preserve its own model revision,
+token digest, binary digest, exact target window, and source identity. The
+reference run reported PPL 7.203125 → 24.234375 (+236.44%); shell quality
+remains unmeasured because this window consumes reconstructed shared-prefix K/V
+only. The runtime did not expose a tokenizer revision; the committed
+`token_ids.json` is therefore the authoritative exact input witness.
+
+## Inspect a historical single-pool receipt (not a quality gate)
+
+The command below reproduces fields from an immutable historical receipt. Its
+full-cache/full-input PPL method is not cache-aligned, so the displayed
+`+0.00%` is not publication-admitted evidence of PPL neutrality.
 
 ```bash
 cat results/bench/ppl/smollm2-1.7b/wikitext-2/state.json | python -c "

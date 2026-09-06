@@ -1,0 +1,33 @@
+{
+  "schema": "ProveKvCliBuildAttestationV1",
+  "source_manifest_sha256": "ed9e15435ab6a8218872ea7635300158567a73a29792435ba8f05c928319bf3a",
+  "source_archive_sha256": "e6524df573762ef0be7bf0dffff6b0b156c827296bd0a561f6d42909f2a2c062",
+  "verified_source_files": 109,
+  "multi_agent_cli_sha256": "3b62d72febf7babe07b5f108d4eaf03c7bb7a35754f50184ef29ee2d9fb1ca53",
+  "target": "x86_64-unknown-linux-gnu",
+  "rustc": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+  "cargo": "cargo 1.93.1 (083ac5135 2025-12-15)",
+  "build_command": "cargo build --release --locked -p provekv --example prove_kv_multi_agent_shell",
+  "build_attempt": {
+    "receipt_id": "5fb86affafdd4b3e9f30900902147e1b",
+    "receipt_sha256": "daf446dddf615ee6c666ce20ccf4290e76428555adf084c0f432c9810c0b718b",
+    "status": "failed_after_successful_build",
+    "failure_reason": "The first attestation compared the rebuilt binary with the superseded pre-fix binary. The rebuilt binary was preserved and used by the v3 run."
+  },
+  "source_and_binary_verification": {
+    "receipt_id": "1232a9bfd7f34127a573ecc3f7d10777",
+    "receipt_sha256": "fd9bafcbc48ea3c2cee1bac0d21605254b674bc3040f004a78261131e8b79c3e",
+    "status": "passed"
+  },
+  "fresh_shell_and_ppl_run": {
+    "receipt_id": "284487f5646f48d18c478f2d580668a6",
+    "receipt_sha256": "4da158937f4546b02e25872756bd7e90f75ca5f95c95ad97fb7f690aeb30db1d",
+    "status": "passed"
+  },
+  "public_source_identity_run": {
+    "receipt_id": "284487f5646f48d18c478f2d580668a6",
+    "receipt_sha256": "4da158937f4546b02e25872756bd7e90f75ca5f95c95ad97fb7f690aeb30db1d",
+    "status": "passed"
+  },
+  "evidence_boundary": "The full execution receipts and environment metadata remain in the local evidence store. This public projection contains receipt IDs and content hashes; the benchmark state files intentionally retain their cache path as run-identity metadata."
+}

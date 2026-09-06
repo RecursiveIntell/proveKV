@@ -1,5 +1,10 @@
 # Shell-tier PPL validation report
 
+> **Historical, unadmitted quality output.** This report's PPL path used a
+> full-cache/full-input method that does not satisfy the current cache-aligned
+> held-out-continuation contract. PPL statements below are retained as history,
+> not publication evidence.
+
 **Date:** 2026-06-03
 **Model:** HuggingFaceTB/SmolLM2-1.7B-Instruct (24 layers, 32 kv-heads, head_dim=64)
 **Corpus:** wikitext-2 (1024 tokens, eval window [716, 1024) — last 30%)

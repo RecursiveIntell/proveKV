@@ -1,17 +1,13 @@
 cff-version: 1.2.0
-message: "If you reference this measurement in academic work, please cite it as below. The headline numbers are PPL-validated system-level compression ratios at N=8 agents, SmolLM2-1.7B + WikiText-2, ΔPPL = +0.00%. Two baseline denominators: f32-raw KV (36.00× lossless / 68.04× lossy) and fp16-equivalent (18.00× lossless / 34.02× lossy). proveKV does not reduce framework cache bytes directly — it decompresses to f32 and patches the cache. See CLAIMS.json for the per-baseline ratio breakdown and the receipts that justify each number."
+message: "If you reference this measurement, separate its two estimands. The N=8 size result is 40.50× for the f32-radii shell profile and 76.54× for the BlockLogU8-radii shell profile versus eight independent f32 contexts of 800 shared + 28 unique tokens each (20.25× / 38.27× versus fp16-equivalent bytes). 'Lossless' names the f32-radii storage mode, not original-K/V reconstruction. Separately, one cache-aligned shared-prefix continuation check on an aggregate SmolLM2-1.7B + WikiText-2 fixture produced oracle PPL 7.203125 and roundtrip PPL 24.234375 (+236.44%) on exact target indices [800, 1024). It consumes reconstructed shared-prefix K/V, not shell K/V, rejects PPL neutrality, and is not independent-agent evidence. See CLAIMS.json and the bound receipts."
 type: software
 # F7 audit: the title previously said "lossless at 11.13x", which was the
 # pool-only lossless ratio from the older `kv-lossless-11x` work. The
-# current default is two-tier (pool + per-agent shells) at the b=4
-# default: 36.00x lossless / 68.04x lossy vs f32-raw KV, both
-# PPL-validated on SmolLM2-1.7B + WikiText-2 with delta_ppl_pct = +0.00%
-# (msi 2026-06-03, post-audit binary acf6424). fp16-equivalent baseline
-# gives 18.00x / 34.02x (half the f32 number, since compressed bytes are
-# dtype-agnostic).
-title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems — 36.00x lossless / 68.04x lossy PPL-validated at N=8 (vs f32-raw KV; 18.00x / 34.02x vs fp16-equivalent)"
-version: 1.1.0
-date-released: 2026-06-03
+# current default is two-tier (pool + per-agent shells) at b=4. Current
+# receipt-bound size and aggregate-fixture PPL evidence is in CLAIMS.json.
+title: "proveKV: a two-tier, receipted, content-addressed KV-cache pool for multi-agent LLM systems"
+version: 1.2.0
+date-released: 2026-09-06
 license: MIT
 authors:
   - family-names: Stevenson

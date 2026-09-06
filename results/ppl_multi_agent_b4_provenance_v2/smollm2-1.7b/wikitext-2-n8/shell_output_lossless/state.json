@@ -1,0 +1,13 @@
+{
+  "model": "KV shape (24 layers, 32 kv heads, head_dim 64)",
+  "n_agents": 8,
+  "shared_pool_bytes": 14746512,
+  "total_shell_bytes": 49559808,
+  "total_with_sharing_bytes": 64306320,
+  "naive_total_bytes": 2604662784,
+  "memory_reduction_factor": 40.50399375986684,
+  "shell_codec": "turbo_4bit_batched",
+  "shared_codec": "fib_k4_n32_batched",
+  "radii_compression": "Lossless",
+  "lossy": false
+}

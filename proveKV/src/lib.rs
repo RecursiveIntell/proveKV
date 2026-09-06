@@ -14,22 +14,25 @@
 //! ## Architecture
 //!
 //! A two-tier compression strategy derived from empirical benchmarks.
-//! All ratios below are PPL-validated on SmolLM2-1.7B + WikiText-2 at
-//! N=8 agents, 800 shared + 28×8 unique tokens, 1024 tokens total
-//! (msi 2026-06-03). `delta_ppl_pct = +0.00%` in every run.
+//! Current N=8 size ratios use eight independent contexts of 800 shared +
+//! 28 unique tokens. PPL is separately checked on one aggregate 1024-token
+//! SmolLM2-1.7B + WikiText-2 fixture over exact targets [800, 1024). That
+//! cache-aligned shared-prefix continuation check degraded from 7.203125 to
+//! 24.234375 (+236.44%). It does not consume reconstructed shell K/V, so it
+//! is neither a PPL-neutrality claim nor independent-agent quality evidence.
 //!
 //! - **Shared pool (cold tier):** fib-quant at k=4, N=32 (FB2 batched
 //!   wire format). Measured 21.33x ratio on the shared prefix alone,
 //!   vs an f32-raw KV baseline. The fib codec is a codebook-based
 //!   vector quantizer; reconstruction error per vector is bounded by the
-//!   k=4 codebook resolution, not lossless. The PPL-validated claim is
-//!   "PPL-neutral on the measured configurations" — see CLAIMS.json
-//!   for the per-baseline ratio breakdown.
+//!   k=4 codebook resolution, not lossless. Historical single-pool PPL
+//!   receipts are scoped separately; the current N=8 two-tier defaults do
+//!   not pass the PPL-neutrality gate. See CLAIMS.json for the exact scope.
 //! - **Agent shells (hot tier):** turbo-quant at b=4 (TQB1 batched wire
 //!   format), 32 projections. Measured 160 B/vec at the lossless
 //!   profile (f32 radii) and 72 B/vec at the lossy profile (BlockLogU8
-//!   radii). At the b=4 default, the system achieves 36.00x lossless
-//!   and 68.04x lossy PPL-validated system-level compression at N=8.
+//!   radii). At the b=4 default, the byte-derived N=8 size result is
+//!   40.50x lossless and 76.54x lossy versus the explicit f32 baseline.
 //!
 //! ## Quick Start
 //!

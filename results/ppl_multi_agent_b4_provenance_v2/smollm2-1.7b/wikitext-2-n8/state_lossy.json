@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0.0",
+  "model": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+  "corpus": "wikitext-2",
+  "n_shared": 800,
+  "n_unique": 28,
+  "n_agents": 8,
+  "n_total": 1024,
+  "ppl_frac": null,
+  "requested_ppl_frac": 0.3,
+  "ppl_window": [
+    800,
+    1024
+  ],
+  "ppl_window_source": "explicit_start",
+  "ppl_window_kind": "scored_target_token_indices_half_open",
+  "ppl_scored_tokens": 224,
+  "seed": 42,
+  "started_at": "2026-09-06T18:15:19",
+  "execution_identity": {
+    "benchmark_script_sha256": "117464462fd54fbcc4f5be6cfd1379d5c726ea5946983276d704d10b5d0a83a7",
+    "multi_agent_cli_sha256": "3b62d72febf7babe07b5f108d4eaf03c7bb7a35754f50184ef29ee2d9fb1ca53",
+    "source_manifest_sha256": "ed9e15435ab6a8218872ea7635300158567a73a29792435ba8f05c928319bf3a",
+    "source_archive_sha256": "e6524df573762ef0be7bf0dffff6b0b156c827296bd0a561f6d42909f2a2c062"
+  },
+  "model_config": {
+    "num_layers": 24,
+    "num_heads": 32,
+    "num_kv_heads": 32,
+    "head_dim": 64,
+    "hidden_size": 2048,
+    "attention_type": "MHA"
+  },
+  "cache_identity": {
+    "schema": "ProveKvOracleCacheV1",
+    "model": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+    "model_revision": "31b70e2e869a7173562077fd711b654946d38674",
+    "tokenizer": "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+    "tokenizer_revision": null,
+    "corpus": "wikitext-2",
+    "n_shared": 800,
+    "n_unique": 28,
+    "n_agents": 8,
+    "n_total": 1024,
+    "seed": 42,
+    "model_config": {
+      "num_layers": 24,
+      "num_heads": 32,
+      "num_kv_heads": 32,
+      "head_dim": 64,
+      "hidden_size": 2048,
+      "attention_type": "MHA"
+    },
+    "ppl_window": [
+      800,
+      1024
+    ],
+    "ppl_window_kind": "scored_target_token_indices_half_open",
+    "token_ids_sha256": "fdcf3064600cd13cb9b38cc6d4a4892efaa97d3f67bc10bb098b21fbd3828071",
+    "benchmark_script_sha256": "117464462fd54fbcc4f5be6cfd1379d5c726ea5946983276d704d10b5d0a83a7",
+    "identity_sha256": "ddc6cb195d3e94b553c60046bd1ca979e744205f130472b894f9809ca274075e"
+  },
+  "phase0": {
+    "status": "complete",
+    "ppl": 7.203125,
+    "cache_path": "/home/jstevenson/provekv-benchmark-runs/20260906T230418Z-aligned-v4/output/cache_oracle.pt",
+    "cache_identity_sha256": "ddc6cb195d3e94b553c60046bd1ca979e744205f130472b894f9809ca274075e",
+    "ppl_window": [
+      800,
+      1024
+    ],
+    "ppl_window_kind": "scored_target_token_indices_half_open",
+    "ppl_scored_tokens": 224
+  },
+  "phase1": {
+    "lossy": true,
+    "ppl": 24.234375,
+    "roundtrip_seconds": 439.61136293411255,
+    "shell_output_reused": false,
+    "forward_seconds": 0.36753153800964355,
+    "delta_ppl_pct": 236.44251626898048,
+    "status": "complete",
+    "completed_at": "2026-09-06T18:25:35",
+    "oracle_ppl": 7.203125,
+    "roundtrip_ppl": 24.234375,
+    "baseline_definition": "N independent agent contexts, each containing n_shared + n_unique tokens; this size estimand is distinct from the aggregate PPL fixture.",
+    "baseline_tokens_per_agent": 828,
+    "baseline_bytes_per_token_fp32": 393216,
+    "raw_total_bytes": 2604662784,
+    "pool_bytes": 14746512,
+    "pool_size_bytes": 14746512,
+    "shells_size_bytes": 19282176,
+    "compressed_total_bytes": 34028688,
+    "compression_ratio": 76.54314453733862,
+    "ratio_vs_f32_raw": 76.54314453733862,
+    "ratio_vs_fp16_kv": 38.27157226866931,
+    "pool_compression_ratio": 21.332013970490106,
+    "naive_per_agent_full_cache": true,
+    "pool_receipt_sha256": "a248fee69b914a61df32f272d017f1b450930896351675a0547a827ee2ebf024",
+    "agents_receipt_sha256": "70f9b445652dd8d54ddabe4c758557d57ea4e0174288e91d25bca431efadf868",
+    "shell_state_sha256": "47551b867d0186d6129f0c8b9bbbf81d2fef1e74549e8537d8270e3635a53f60"
+  }
+}
