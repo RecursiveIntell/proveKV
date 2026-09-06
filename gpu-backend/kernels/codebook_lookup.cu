@@ -27,12 +27,14 @@
 // expected to validate codebook finiteness at construction (which
 // FibCodebookV1::build already does), so this is not a hot concern.
 
-#include <stdint.h>
+// Keep this source self-contained for runtime NVRTC compilation. NVRTC does
+// not search host C/C++ include paths by default, and this kernel needs only
+// CUDA's built-in 32-bit unsigned integer ABI for its output indices.
 
 extern "C" __global__ void codebook_lookup_kernel(
     const float* __restrict__ input,    // [n × d]
     const float* __restrict__ codebook, // [N × k]
-    uint32_t* __restrict__ output,      // [n × block_count]
+    unsigned int* __restrict__ output,  // [n × block_count]
     int n,
     int d,
     int k,
@@ -80,6 +82,6 @@ extern "C" __global__ void codebook_lookup_kernel(
     }
 
     if (threadIdx.x == 0) {
-        output[block_idx] = (uint32_t)c;
+        output[block_idx] = (unsigned int)c;
     }
 }
