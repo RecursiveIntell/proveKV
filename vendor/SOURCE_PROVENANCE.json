@@ -1,0 +1,92 @@
+{
+  "schema": "VendoredMacroRepairV1",
+  "packages": [
+    {
+      "name": "simba",
+      "version": "0.8.1",
+      "upstream_registry": "https://crates.io",
+      "upstream_package_sha256": "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae",
+      "upstream_files": {
+        ".cargo_vcs_info.json": "498c088a52815a87d4fa5475fbeef3823e5ea7c4cf3c727264ed50c92309d09b",
+        ".gitignore": "f674ba7022527f4b0f546357cc2305b2576f78dc5ce86157ddf3c5d43ff7ff59",
+        "CHANGELOG": "2cb5e2fbf23e104e889e21561d5fd251d4139a8b95067eefcb4d4e7ef3e5d3d6",
+        "Cargo.toml": "0977e5b2e11d5225238a11954714160218a2f474eacd1a62eee99d8c3a0d1f25",
+        "Cargo.toml.orig": "96e2773c343b607cdeb4e21939bcea5b7fc7596f897d71f0ccaba6b1def7d3e7",
+        "LICENSE": "ceacfa4d7fa67df64ab09a56fe248c50a3bfc9bc00374d69bd74ad763b14b89c",
+        "README.md": "d20ecf0a15be3c766d63b9191f9dbc9b8a15a762f034c03eca2772ca817c3421",
+        "rustfmt.toml": "9f39eac88c8bfd0c32763c6607cb0145ce705468b17686081921d024675da30d",
+        ".github/FUNDING.yml": "d2ec3fa4da26c876310f05ec60e9ad3b8a9e445efb6c818e3fd2bc3fd5859518",
+        ".github/Xargo.toml": "6d2bed87dd9cf96c852a58cd33d8f5f22caaee46032be52260b710729f839dbc",
+        "src/lib.rs": "5bae60fcb450bef1f38d22c6457c3aeaa0eea316bd9f6eedd079c3238be844c5",
+        "src/scalar/complex.rs": "49f2a9876f0b6be8062a5a7afad8badcec5db3771e1f2c74b6d42fe2b92f7558",
+        "src/scalar/field.rs": "8353d621c41d0c6bbff738fa283bf4fbe321a4dd183834617fe32162fb9a7ed6",
+        "src/scalar/fixed_impl.rs": "d2e985ca5366ba7cb2134b1cdea4abe0c92e130e313ade1671ceeca3986765e7",
+        "src/scalar/mod.rs": "07db7595b49d60184ca071e1203d6aafdb985ad9137ca3845ce7a81c49c5f90c",
+        "src/scalar/real.rs": "e0f7cb552cf75cf616016488efe76f358128df39fc5c8f6497deb8e9d175fea8",
+        "src/scalar/subset.rs": "e526cdc37b074313752ff9363f7f0db8392f023e10020a2ad5f2e1953a6822e4",
+        "src/simd/auto_simd_impl.rs": "f04f5a00de0608e73490a33cc9a03b9f0120881a486093a4cbbc608d58961a79",
+        "src/simd/mod.rs": "138848bc659ac2b3dcd13cc9959b69404d2b1ccbdd2e1c469e56b3f6d2743489",
+        "src/simd/packed_simd_impl.rs": "b3507208bf3bca0796a99d1376f21f7fd76e9c7fa0d8966eef92d149df7d435a",
+        "src/simd/rand_impl.rs": "c28400b2dddbe89756c515cc72dfc20b91805a7cc2bccb9182629a486378e878",
+        "src/simd/simd_bool.rs": "2502ca4c05cdb560331c235a1f27da381b0d96bcaecf9abe841e822a590911d3",
+        "src/simd/simd_complex.rs": "79e724c82665b66963ea326730a01e6bfce20904f752ffc2c7088462ed8ecd14",
+        "src/simd/simd_option.rs": "8b9a81ff3ecff17cc041546ab73760012071c05f27fcdccbf09dc035bc76c650",
+        "src/simd/simd_partial_ord.rs": "e09367ba4bf26ab8534887686129183b2be5c269993492632f0afd46e19e29d0",
+        "src/simd/simd_real.rs": "74b2f3215d924c913ade193f45024146378c2ac53ea3c897db922e0d904b78ce",
+        "src/simd/simd_signed.rs": "4207937b9fa18ef1508c45f59a8ddf6df7d5708fbfe6873fd67b497380ee84ff",
+        "src/simd/simd_value.rs": "ed0e44ca60afcb3713a44557ce57b60b05382350b1fc2fbd61494930e9af014e",
+        "src/simd/wide_simd_impl.rs": "e7cd184e3ee80d54bf67061fd10b6c6570f4e5f1c6f2f2868ec6436937b27bfb",
+        ".github/workflows/simba-ci-build.yml": "a72dce0173ee3e391585040d80f29367024529c655aaaa650d996da05b1888f5"
+      },
+      "vendored_path": "vendor/simba-0.8.1",
+      "allowed_modified_files": [
+        "Cargo.toml"
+      ],
+      "change": "Replace only paste with package-renamed pastey; preserve numerical sources."
+    },
+    {
+      "name": "simba",
+      "version": "0.9.1",
+      "upstream_registry": "https://crates.io",
+      "upstream_package_sha256": "c99284beb21666094ba2b75bbceda012e610f5479dfcc2d6e2426f53197ffd95",
+      "upstream_files": {
+        ".cargo_vcs_info.json": "166923977460e0676c68b5152b0ec27679a5da4d218639ca5ac0da9ba3338429",
+        ".gitignore": "f674ba7022527f4b0f546357cc2305b2576f78dc5ce86157ddf3c5d43ff7ff59",
+        "CHANGELOG": "a7bbe243a86860bae8ac63319f3f7d98e4a6982f421470b3202db3daf99c05b7",
+        "Cargo.lock": "e9ed66efa5c88416fa48874c13f5a9f50fbf98b3894632c986ffd547d40df75c",
+        "Cargo.toml": "4d3c26a4d18af40a1ce894e2a0fcddbecd5fcfe827b17b781978e3664a1aed9e",
+        "Cargo.toml.orig": "1d438d817cdd777106e414731ebd51692b309aed250e9bb2e8039ead9d46978f",
+        "LICENSE": "ceacfa4d7fa67df64ab09a56fe248c50a3bfc9bc00374d69bd74ad763b14b89c",
+        "README.md": "9dd0bde03bba67209784cd5f35e1dadccad861aacedc6ee7a3ce4d595f34f74f",
+        "rustfmt.toml": "9f39eac88c8bfd0c32763c6607cb0145ce705468b17686081921d024675da30d",
+        ".github/FUNDING.yml": "d2ec3fa4da26c876310f05ec60e9ad3b8a9e445efb6c818e3fd2bc3fd5859518",
+        ".github/Xargo.toml": "48be6290bd5bd28cec886bd4854141b4cf68811800f756184ca58349faa62a82",
+        "src/lib.rs": "692148b72894f2d949d24d33b75606d2a2c35ce1f6a12b5d66562e7af7656102",
+        "src/scalar/complex.rs": "b36190e4a216dcf686939b54ea3f18c784d33b4ade6c932f8694012a6c082e53",
+        "src/scalar/field.rs": "67b64fd48e1ad43b6cde5708799e67ce5110d4dd62089ea98fc8dcb1f9b5e911",
+        "src/scalar/fixed_impl.rs": "df5e865416d73ee9f078582e5e7fbb0572ada16608e0a03cece998e91732d0af",
+        "src/scalar/mod.rs": "95292506af8564ade58436886770646f87924e3c563eaefc8f128b89299a35f0",
+        "src/scalar/real.rs": "0354ba49ecb58c8187ec0615909a3a53ab55fc96d20f8efd4851df270b44f1e8",
+        "src/scalar/subset.rs": "91932ea5f1965ecf50f2c87ff3fc57556433179648a30a7ec9b72753120da121",
+        "src/simd/auto_simd_impl.rs": "21632cb3372469f293d4d05b361756015e7582d9fcefdd8db8ef32d327a5a3cf",
+        "src/simd/mod.rs": "4b1f657ef398599f4775807cdec5f6a4285a73f61b970f2fc08c07b02709ef6f",
+        "src/simd/portable_simd_impl.rs": "a6f4c46d33a30255d7e9d8250311ec71e260b5bfefe04d4c9bc0ba423eb378a0",
+        "src/simd/rand_impl.rs": "e588154efec79bff79bf206308ba4b63c50fbf6799fa46e4428e2f77dc3573b1",
+        "src/simd/simd_bool.rs": "1d24f705ebd0af83487fcf9fe7be8f6bb8ed8cbc1913a00c943c491c02e9ff75",
+        "src/simd/simd_complex.rs": "aa422ee2e33892529d60ed185d1bc75e7d97444289a28e71dcb36a8176acda38",
+        "src/simd/simd_option.rs": "8b9a81ff3ecff17cc041546ab73760012071c05f27fcdccbf09dc035bc76c650",
+        "src/simd/simd_partial_ord.rs": "e09367ba4bf26ab8534887686129183b2be5c269993492632f0afd46e19e29d0",
+        "src/simd/simd_real.rs": "778654b10433cd1621147603beecdb2b61cbad3756379a8b91b9eca404c07f62",
+        "src/simd/simd_signed.rs": "4207937b9fa18ef1508c45f59a8ddf6df7d5708fbfe6873fd67b497380ee84ff",
+        "src/simd/simd_value.rs": "d7998b00adbf200485911e7a4a9631817835a392dcda5ee305fe6710e6d625f2",
+        "src/simd/wide_simd_impl.rs": "d0a7cbe23f7f89feaa7906419c5ae90016ae1bec6db83b39d26741b19108af7d",
+        ".github/workflows/simba-ci-build.yml": "048d7d6759edd0bcbf628b93ac8cd9d32a1e0ba586e992de76061aca3d94bbc8"
+      },
+      "vendored_path": "vendor/simba-0.9.1",
+      "allowed_modified_files": [
+        "Cargo.toml"
+      ],
+      "change": "Replace only paste with package-renamed pastey; preserve numerical sources."
+    }
+  ]
+}

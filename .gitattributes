@@ -1,0 +1,2 @@
+# Preserve upstream archive bytes, including CRLF, for the provenance verifier.
+vendor/simba-*/** -text whitespace=cr-at-eol
