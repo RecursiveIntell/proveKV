@@ -16,13 +16,18 @@ pub mod error;
 pub mod fallback;
 pub mod simd_nearest;
 
-pub use error::GpuError;
+pub use error::{GpuAvailability, GpuError};
 
 /// Result type for GPU operations.
 pub type Result<T> = std::result::Result<T, GpuError>;
 
-/// Global GPU context — initialized once, shared across crates.
-static GPU_CTX: OnceLock<Option<GpuContext>> = OnceLock::new();
+/// Canonical checked-in CUDA source for the only kernel activated in this pass.
+pub(crate) const CODEBOOK_LOOKUP_CU: &str = include_str!("../kernels/codebook_lookup.cu");
+
+/// Global GPU initialization result — initialized once and shared across crates.
+/// The error is retained so callers can distinguish missing hardware from a
+/// missing compiler, failed source compilation, or incomplete module.
+static GPU_CTX: OnceLock<std::result::Result<GpuContext, GpuAvailability>> = OnceLock::new();
 
 /// GPU context holding device, stream, and compiled kernels.
 #[derive(Debug)]
@@ -36,25 +41,38 @@ pub struct GpuContext {
 }
 
 impl GpuContext {
-    /// Initialize GPU context. Returns None if no CUDA device is available
-    /// or the `gpu` feature is disabled.
+    /// Initialize the codebook lookup CUDA context, if it is fully ready.
     pub fn init() -> Option<&'static GpuContext> {
-        GPU_CTX.get_or_init(|| {
-            #[cfg(feature = "gpu")]
-            {
-                cuda::init_context().ok()
-            }
-            #[cfg(not(feature = "gpu"))]
-            {
-                None
-            }
-        });
-        GPU_CTX.get().and_then(|c| c.as_ref())
+        GPU_CTX
+            .get_or_init(|| {
+                #[cfg(feature = "gpu")]
+                {
+                    cuda::init_context()
+                }
+                #[cfg(not(feature = "gpu"))]
+                {
+                    Err(GpuAvailability::FeatureDisabled)
+                }
+            })
+            .as_ref()
+            .ok()
     }
 
-    /// Check if GPU acceleration is available.
+    /// Return the exact readiness state for the activated codebook kernel.
+    pub fn availability() -> GpuAvailability {
+        let _ = Self::init();
+        match GPU_CTX
+            .get()
+            .expect("GPU initialization result must be cached")
+        {
+            Ok(_) => GpuAvailability::Ready,
+            Err(availability) => availability.clone(),
+        }
+    }
+
+    /// True only when [`Self::availability`] is [`GpuAvailability::Ready`].
     pub fn is_available() -> bool {
-        Self::init().is_some()
+        matches!(Self::availability(), GpuAvailability::Ready)
     }
 
     /// Minimum batch size for GPU to be worth the launch overhead.
@@ -67,7 +85,8 @@ impl GpuContext {
 ///
 /// Applies in-place WHT to `n` vectors of length `dim`.
 /// `dim` must be a power of 2. Pad input before calling.
-/// Uses GPU if available and batch size warrants it.
+/// CUDA Hadamard is not activated until its complete parity contract is
+/// independently re-established; this pass always selects the CPU reference.
 pub fn hadamard_batch(data: &mut [f32], n: usize, dim: usize, seed: u64) -> Result<()> {
     if data.len() != n * dim {
         return Err(GpuError::DimensionMismatch {
@@ -76,16 +95,6 @@ pub fn hadamard_batch(data: &mut [f32], n: usize, dim: usize, seed: u64) -> Resu
         });
     }
 
-    #[cfg(feature = "gpu")]
-    {
-        if let Some(ctx) = GpuContext::init() {
-            if n >= GpuContext::GPU_MIN_BATCH_SIZE && dim >= GpuContext::GPU_MIN_DIM {
-                return cuda::hadamard_batch_gpu(ctx, data, n, dim, seed);
-            }
-        }
-    }
-
-    // CPU fallback
     fallback::hadamard_batch_cpu(data, n, dim, seed)
 }
 
@@ -118,15 +127,7 @@ pub fn lloyd_max_batch(
         )));
     }
 
-    #[cfg(feature = "gpu")]
-    {
-        if let Some(ctx) = GpuContext::init() {
-            if n >= GpuContext::GPU_MIN_BATCH_SIZE {
-                return cuda::lloyd_max_batch_gpu(ctx, vectors, n, dim, k, n_levels, seed);
-            }
-        }
-    }
-
+    // CUDA Lloyd-Max is deliberately not activated in this pass.
     fallback::lloyd_max_batch_cpu(vectors, n, dim, k, n_levels, seed)
 }
 
@@ -150,17 +151,7 @@ pub fn lloyd_max_decode_batch(
         });
     }
 
-    #[cfg(feature = "gpu")]
-    {
-        if let Some(ctx) = GpuContext::init() {
-            if n >= GpuContext::GPU_MIN_BATCH_SIZE {
-                return cuda::lloyd_max_decode_batch_gpu(
-                    ctx, indices, norms, n, dim, k, n_levels, seed,
-                );
-            }
-        }
-    }
-
+    // CUDA Lloyd-Max decode is deliberately not activated in this pass.
     fallback::lloyd_max_decode_batch_cpu(indices, norms, n, dim, k, n_levels, seed)
 }
 
@@ -176,15 +167,7 @@ pub fn bitpack(indices: &[u8], bits_per_index: usize) -> Result<Vec<u8>> {
         )));
     }
 
-    #[cfg(feature = "gpu")]
-    {
-        if let Some(ctx) = GpuContext::init() {
-            if indices.len() >= 1024 {
-                return cuda::bitpack_gpu(ctx, indices, bits_per_index);
-            }
-        }
-    }
-
+    // CUDA bitpacking is deliberately not activated in this pass.
     fallback::bitpack_cpu(indices, bits_per_index)
 }
 
@@ -195,8 +178,8 @@ pub fn bitpack(indices: &[u8], bits_per_index: usize) -> Result<Vec<u8>> {
 /// row-major f32) that minimizes the squared L2 distance. Returns
 /// `n * (d / k)` u32 indices in row-major (vector, sub-block) order.
 ///
-/// Uses GPU when available and the codebook size `N <= 32` (the kernel
-/// is one warp wide). Falls back to CPU for larger codebooks.
+/// Uses GPU only for the proved kernel contract: `k == 4` and exactly 32
+/// codewords in one warp. Other valid shapes use the CPU reference.
 ///
 /// This is the operation that dominates fib-quant's `encode_batch` after
 /// the Hadamard rotation — for k=4, N=32, d=128, n=80 it runs ~1.5M
@@ -208,11 +191,19 @@ pub fn codebook_lookup_batch(
     d: usize,
     k: usize,
 ) -> Result<Vec<u32>> {
-    if input.len() != n * d {
+    let expected_input_len = n
+        .checked_mul(d)
+        .ok_or_else(|| GpuError::InvalidConfig("n * d overflows usize".into()))?;
+    if input.len() != expected_input_len {
         return Err(GpuError::DimensionMismatch {
-            expected: n * d,
+            expected: expected_input_len,
             got: input.len(),
         });
+    }
+    if k == 0 {
+        return Err(GpuError::InvalidConfig(
+            "k must be greater than zero".into(),
+        ));
     }
     if d % k != 0 {
         return Err(GpuError::InvalidConfig(format!(
@@ -220,32 +211,57 @@ pub fn codebook_lookup_batch(
             d, k
         )));
     }
-    let n_codewords = codebook.len() / k;
-    if n_codewords > 32 {
-        // GPU kernel hard-codes 32-thread warp; fall back to CPU.
+    if codebook.is_empty() || codebook.len() % k != 0 {
+        return Err(GpuError::InvalidConfig(format!(
+            "codebook length ({}) must be a non-zero multiple of k ({})",
+            codebook.len(),
+            k
+        )));
+    }
+    if codebook.iter().any(|value| !value.is_finite()) {
+        return Err(GpuError::InvalidConfig(
+            "codebook values must all be finite".into(),
+        ));
+    }
+    // The CUDA reduction does not define a stable ordering for NaN distances.
+    // Preserve the established CPU behavior instead of treating a non-finite
+    // input as eligible for the narrowly proved GPU contract.
+    if input.iter().any(|value| !value.is_finite()) {
         return fallback::codebook_lookup_cpu(input, codebook, n, d, k);
     }
-
     #[cfg(feature = "gpu")]
     {
-        if let Some(ctx) = GpuContext::init() {
-            if n >= GpuContext::GPU_MIN_BATCH_SIZE && d >= GpuContext::GPU_MIN_DIM {
-                return cuda::codebook_lookup_batch_gpu(ctx, input, codebook, n, d, k);
-            }
+        let n_codewords = codebook.len() / k;
+        if codebook_lookup_supports_gpu(n, d, k, n_codewords) {
+            let ctx = GpuContext::init().expect("ready availability must expose a CUDA context");
+            return cuda::codebook_lookup_batch_gpu(ctx, input, codebook, n, d, k);
         }
     }
 
     fallback::codebook_lookup_cpu(input, codebook, n, d, k)
 }
 
-/// True if a specific call to [`codebook_lookup_batch`] would dispatch
-/// to GPU. Requires the codebook size to fit in a single warp (N <= 32)
-/// and the standard batch/dim thresholds.
-pub fn codebook_lookup_supports_gpu(n: usize, d: usize, n_codewords: usize) -> bool {
-    n_codewords <= 32
+/// True if a specific call to [`codebook_lookup_batch`] would dispatch to GPU.
+/// The checked-in kernel currently proves only the `k=4`, exactly-32-codeword
+/// warp contract; other valid shapes retain the CPU reference path.
+pub fn codebook_lookup_supports_gpu(n: usize, d: usize, k: usize, n_codewords: usize) -> bool {
+    k == 4
+        && n_codewords == 32
         && n >= GpuContext::GPU_MIN_BATCH_SIZE
         && d >= GpuContext::GPU_MIN_DIM
+        && i32::try_from(n).is_ok()
+        && i32::try_from(d).is_ok()
+        && n.checked_mul(d / k)
+            .is_some_and(|total_blocks| u32::try_from(total_blocks).is_ok())
         && GpuContext::is_available()
+}
+
+/// Blake3 digest of the checked-in source compiled by NVRTC when readiness is
+/// `Ready`. This is evidence linkage, not a substitute for the HIL parity gate.
+pub fn codebook_kernel_source_digest() -> String {
+    blake3::hash(CODEBOOK_LOOKUP_CU.as_bytes())
+        .to_hex()
+        .to_string()
 }
 
 #[cfg(all(test, feature = "gpu"))]
@@ -327,4 +343,66 @@ mod gpu_parity_tests {
 /// canonical f64 reference for trained Lloyd-Max codebooks.
 pub fn nearest_codeword_f32(sample: &[f32], codebook: &[f32], k: usize) -> usize {
     simd_nearest::nearest_codeword_f32(sample, codebook, k)
+}
+
+#[cfg(test)]
+mod readiness_tests {
+    use super::{codebook_lookup_batch, GpuAvailability, GpuContext, GpuError};
+    use crate::fallback::codebook_lookup_cpu;
+
+    #[test]
+    #[cfg(not(feature = "gpu"))]
+    fn disabled_feature_reports_feature_disabled() {
+        assert_eq!(GpuContext::availability(), GpuAvailability::FeatureDisabled);
+        assert!(!GpuContext::is_available());
+    }
+
+    #[test]
+    #[cfg(feature = "gpu")]
+    fn gpu_feature_availability_does_not_panic_when_cuda_is_unavailable() {
+        let availability = std::panic::catch_unwind(GpuContext::availability)
+            .expect("unavailable CUDA runtime must return typed availability, not panic");
+
+        assert_eq!(
+            GpuContext::is_available(),
+            matches!(availability, GpuAvailability::Ready),
+        );
+    }
+
+    #[test]
+    fn non_finite_codebook_is_rejected_before_cuda_dispatch() {
+        let input = vec![0.0; 4];
+        let mut codebook = vec![0.0; 32 * 4];
+        codebook[0] = f32::NAN;
+
+        let error = codebook_lookup_batch(&input, &codebook, 1, 4, 4)
+            .expect_err("non-finite codebook must not reach CPU or CUDA lookup");
+
+        assert!(matches!(error, GpuError::InvalidConfig(message) if message.contains("finite")));
+    }
+
+    #[test]
+    fn non_finite_input_uses_cpu_reference_before_cuda_dispatch() {
+        let n = 16;
+        let d = 64;
+        let k = 4;
+        let mut input = vec![0.0; n * d];
+        input[0] = f32::NAN;
+        let codebook = vec![0.0; 32 * k];
+
+        let expected = codebook_lookup_cpu(&input, &codebook, n, d, k)
+            .expect("CPU reference must accept the non-finite input fixture");
+        let actual = codebook_lookup_batch(&input, &codebook, n, d, k)
+            .expect("non-finite input must preserve CPU fallback behavior");
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn overflowing_input_shape_is_rejected_before_length_comparison() {
+        let error = codebook_lookup_batch(&[], &[0.0; 4], usize::MAX, 2, 4)
+            .expect_err("overflowing input shape must be rejected");
+
+        assert!(matches!(error, GpuError::InvalidConfig(message) if message.contains("overflows")));
+    }
 }

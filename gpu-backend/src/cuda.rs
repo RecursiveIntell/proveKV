@@ -1,35 +1,61 @@
 //! CUDA-accelerated GPU operations via cudarc driver API.
 //!
 //! Uses CUDA driver dynamic loading — no nvcc needed at build time.
-//! PTX kernels are loaded from file at runtime.
-//! Falls back to CPU if no CUDA device or PTX unavailable.
+//! The only activated kernel is compiled from checked-in CUDA source through
+//! NVRTC at runtime. Other CUDA source files remain CPU-only until they have
+//! their own parity evidence.
 
-use crate::error::GpuError;
-use crate::GpuContext;
+use crate::error::{GpuAvailability, GpuError};
 use crate::Result;
+use crate::{GpuContext, CODEBOOK_LOOKUP_CU};
 use std::sync::{Arc, OnceLock};
 
 use cudarc::driver::PushKernelArg;
 
-/// Lazily-initialized CUDA state.
-static CUDA_STATE: OnceLock<Option<CudaState>> = OnceLock::new();
+/// The initialized module for the single activated CUDA kernel.
+///
+/// `GpuContext` stores the initialization result, so this state is populated
+/// only after driver, NVRTC, module, and symbol validation succeeds.
+static CUDA_STATE: OnceLock<CudaState> = OnceLock::new();
+
+const CODEBOOK_LOOKUP_SYMBOL: &str = "codebook_lookup_kernel";
 
 struct CudaState {
     stream: Arc<cudarc::driver::CudaStream>,
     module: Arc<cudarc::driver::CudaModule>,
 }
 
-/// Initialize CUDA context and probe device capabilities.
-pub fn init_context() -> Result<GpuContext> {
+/// Initialize CUDA context, compile canonical source, and validate the module.
+pub fn init_context() -> std::result::Result<GpuContext, GpuAvailability> {
     use cudarc::driver::CudaContext;
 
-    let ctx = CudaContext::new(0).map_err(|_| GpuError::GpuUnavailable)?;
+    // These checks use CUDArc's own platform-specific library candidates but
+    // do not invoke CUDA driver or NVRTC entrypoints. They prevent CUDArc's
+    // dynamic loader from panicking on a host without the corresponding .so.
+    if !unsafe { cudarc::driver::sys::is_culib_present() } {
+        return Err(GpuAvailability::DriverUnavailable {
+            detail: "CUDA driver shared library was not found".into(),
+        });
+    }
+    if !unsafe { cudarc::nvrtc::sys::is_culib_present() } {
+        return Err(GpuAvailability::NvrtcUnavailable {
+            detail: "NVRTC shared library was not found".into(),
+        });
+    }
+
+    let ctx = CudaContext::new(0).map_err(|error| GpuAvailability::DriverUnavailable {
+        detail: error.to_string(),
+    })?;
 
     let name = ctx.name().unwrap_or_else(|_| "unknown".into());
-    let memory_bytes = ctx.total_mem().unwrap_or(0) as usize;
+    let memory_bytes = ctx.total_mem().unwrap_or(0);
 
-    // Lazy-init full state
-    let _ = CUDA_STATE.get_or_init(|| init_cuda_state(&ctx).map_or(None, Some));
+    let state = init_cuda_state(&ctx)?;
+    CUDA_STATE
+        .set(state)
+        .map_err(|_| GpuAvailability::ModuleLoadFailed {
+            detail: "CUDA state was already initialized unexpectedly".into(),
+        })?;
 
     Ok(GpuContext {
         device_index: 0,
@@ -38,34 +64,33 @@ pub fn init_context() -> Result<GpuContext> {
     })
 }
 
-/// Initialize PTX module.
-fn init_cuda_state(ctx: &Arc<cudarc::driver::CudaContext>) -> Option<CudaState> {
-    let ptx = load_ptx()?;
-    let module = match ctx.load_module(ptx) {
-        Ok(m) => m,
-        Err(_) => return None,
-    };
-    let stream = ctx.default_stream();
-    Some(CudaState { stream, module })
-}
-
-/// Load PTX from file (pre-compiled) or embedded source.
-fn load_ptx() -> Option<cudarc::nvrtc::Ptx> {
-    #[cfg(feature = "precompiled-ptx")]
-    {
-        // Try loading from the crate's kernels directory
-        let ptx_path = concat!(env!("CARGO_MANIFEST_DIR"), "/kernels/combined.ptx");
-        if std::path::Path::new(ptx_path).exists() {
-            return Some(cudarc::nvrtc::Ptx::from_file(ptx_path));
+/// Compile the checked-in source, load its module, and resolve its symbol.
+fn init_cuda_state(
+    ctx: &Arc<cudarc::driver::CudaContext>,
+) -> std::result::Result<CudaState, GpuAvailability> {
+    let ptx = cudarc::nvrtc::compile_ptx(CODEBOOK_LOOKUP_CU).map_err(|error| {
+        GpuAvailability::SourceCompileFailed {
+            detail: error.to_string(),
         }
-    }
-    // PTX not available — CPU fallback
-    None
+    })?;
+    let module = ctx
+        .load_module(ptx)
+        .map_err(|error| GpuAvailability::ModuleLoadFailed {
+            detail: error.to_string(),
+        })?;
+    module
+        .load_function(CODEBOOK_LOOKUP_SYMBOL)
+        .map_err(|error| GpuAvailability::KernelMissing {
+            symbol: CODEBOOK_LOOKUP_SYMBOL,
+            detail: error.to_string(),
+        })?;
+    let stream = ctx.default_stream();
+    Ok(CudaState { stream, module })
 }
 
-/// Check if CUDA state is ready (PTX loaded, kernels available).
+/// Check whether the validated codebook CUDA module is ready.
 fn cuda_ready() -> bool {
-    CUDA_STATE.get().map(|s| s.is_some()).unwrap_or(false)
+    CUDA_STATE.get().is_some()
 }
 
 // ── Hadamard Batch ──
@@ -84,7 +109,9 @@ pub fn hadamard_batch_gpu(
 }
 
 fn hadamard_batch_cuda(data: &mut [f32], n: usize, dim: usize, seed: u64) -> Result<()> {
-    let state = CUDA_STATE.get().and_then(|s| s.as_ref()).unwrap();
+    let state = CUDA_STATE
+        .get()
+        .expect("validated CUDA state must exist before dispatch");
     let signs = crate::fallback::generate_signs_i32(dim, seed);
 
     let dev_signs = state
@@ -155,7 +182,9 @@ fn lloyd_max_batch_cuda(
     n_levels: usize,
     _seed: u64,
 ) -> Result<(Vec<u8>, Vec<f32>)> {
-    let state = CUDA_STATE.get().and_then(|s| s.as_ref()).unwrap();
+    let state = CUDA_STATE
+        .get()
+        .expect("validated CUDA state must exist before dispatch");
     let blocks_per_vector = dim / k;
     let total_blocks = n * blocks_per_vector;
     let total_scalars = total_blocks * k;
@@ -216,6 +245,7 @@ fn lloyd_max_batch_cuda(
     Ok((indices, norms))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn lloyd_max_decode_batch_gpu(
     _ctx: &GpuContext,
     indices: &[u8],
@@ -243,7 +273,9 @@ fn lloyd_max_decode_cuda(
     n_levels: usize,
     _seed: u64,
 ) -> Result<Vec<f32>> {
-    let state = CUDA_STATE.get().and_then(|s| s.as_ref()).unwrap();
+    let state = CUDA_STATE
+        .get()
+        .expect("validated CUDA state must exist before dispatch");
     let blocks_per_vector = dim / k;
     let total_blocks = n * blocks_per_vector;
     let total_out = n * dim;
@@ -308,9 +340,11 @@ pub fn bitpack_gpu(_ctx: &GpuContext, indices: &[u8], bits_per_index: usize) -> 
 }
 
 fn bitpack_cuda(indices: &[u8], bits_per_index: usize) -> Result<Vec<u8>> {
-    let state = CUDA_STATE.get().and_then(|s| s.as_ref()).unwrap();
+    let state = CUDA_STATE
+        .get()
+        .expect("validated CUDA state must exist before dispatch");
     let num_indices = indices.len();
-    let packed_len = (num_indices * bits_per_index + 7) / 8;
+    let packed_len = (num_indices * bits_per_index).div_ceil(8);
 
     let dev_indices = state
         .stream
@@ -322,7 +356,7 @@ fn bitpack_cuda(indices: &[u8], bits_per_index: usize) -> Result<Vec<u8>> {
         .map_err(|e| GpuError::CudaError(e.to_string()))?;
 
     let threads: u32 = 256;
-    let blocks = ((num_indices as u32 + threads * 8 - 1) / (threads * 8)).max(1);
+    let blocks = (num_indices as u32).div_ceil(threads * 8).max(1);
     let cfg = cudarc::driver::LaunchConfig {
         grid_dim: (blocks, 1, 1),
         block_dim: (threads, 1, 1),
@@ -387,7 +421,9 @@ fn codebook_lookup_cuda(
     d: usize,
     k: usize,
 ) -> Result<Vec<u32>> {
-    let state = CUDA_STATE.get().and_then(|s| s.as_ref()).unwrap();
+    let state = CUDA_STATE
+        .get()
+        .expect("validated CUDA state must exist before dispatch");
     let blocks_per_vector = d / k;
     let total_blocks = n * blocks_per_vector;
     let n_codewords = codebook.len() / k;
