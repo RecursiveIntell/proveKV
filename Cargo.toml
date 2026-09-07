@@ -1,6 +1,13 @@
 [workspace]
 members = ["fib-quant", "proveKV", "quant-codec-core", "gpu-backend", "turbo-quant"]
 resolver = "2"
+exclude = ["vendor/simba-0.8.1", "vendor/simba-0.9.1"]
+
+# Both immediate macro consumers are patched explicitly. Downstream workspace
+# roots must apply equivalent patches; Cargo ignores dependency-owned patches.
+[patch.crates-io]
+simba08 = { package = "simba", version = "=0.8.1", path = "vendor/simba-0.8.1" }
+simba09 = { package = "simba", version = "=0.9.1", path = "vendor/simba-0.9.1" }
 
 # F6 audit fix: workspace-local crates must be referenced by `path`, not
 # `version`. Otherwise `cargo build` inside this workspace can resolve
