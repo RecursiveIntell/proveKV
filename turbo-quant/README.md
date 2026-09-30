@@ -229,10 +229,10 @@ notes are in `RELEASE_NOTES.md` and the receipts in
 
 `turbo-quant` is the experimental vector compression sidecar for:
 
-- [`semantic-memory`](../semantic-memory) — every projection
+- [`semantic-memory`](https://github.com/RecursiveIntell/semantic-memory) — every projection
   import with `AdmissibilityClass::Standard` or below can route
   through the sidecar (gated by `quant-governor`).
-- [`scr-runtime-compression`](../scr-runtime-compression) —
+- [`scr-runtime-compression`](https://github.com/RecursiveIntell/Libraries/tree/main/scr-runtime-compression) —
   the cross-runtime compression scheduler can use
   `TurboSidecarCode` for batched candidate generation.
 - The KV-cache shadow mode is used by the

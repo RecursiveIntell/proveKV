@@ -9,7 +9,7 @@
 The size ratios use eight independent contexts of 800 shared + 28 unique tokens. The PPL check uses one 1024-token aggregate fixture containing the same shared prefix and eight contiguous 28-token slices. It loads reconstructed shared-prefix K/V only; the shell K/V receipts support the size result but are not consumed by this score. It does **not** establish eight independent-prompt PPL results. The current N=8 PPL-neutrality claim is not publication-eligible.
 
 <p align="center">
-  <a href="docs/img/architecture.svg"><img src="docs/img/architecture.svg" alt="proveKV two-tier architecture" width="100%"></a>
+  <a href="../docs/img/architecture.svg"><img src="../docs/img/architecture.svg" alt="proveKV two-tier architecture" width="100%"></a>
 </p>
 
 The pool is the system. The codecs are the primitives.
@@ -96,7 +96,7 @@ its bound receipts. Update receipts first, then the ledger and derived surfaces.
 ## N-scaling at 1024 tokens
 
 <p align="center">
-  <a href="docs/img/n_scaling.svg"><img src="docs/img/n_scaling.svg" alt="N-scaling: proveKV stays flat, naive grows linearly" width="100%"></a>
+  <a href="../docs/img/n_scaling.svg"><img src="../docs/img/n_scaling.svg" alt="N-scaling: proveKV stays flat, naive grows linearly" width="100%"></a>
 </p>
 
 Every bar in this chart is from the Qwen2.5-0.5B synthetic size-only sweep
@@ -114,15 +114,11 @@ the shared prefix **once** as a content-addressed quantized pool
 on SmolLM2-1.7B + WikiText-2), and gives each agent only its own small tail
 (TurboQuant, batched and optionally lossy).
 
-The two-tier split is the right call: replacing the shared fib pool
-with turbo alone costs **54% of the system compression** (measured).
-The fib codec's 11.13× lossless compression is built on a
-fundamentally different codebook (Lloyd-Max on a spherical-Beta
-distribution) that turbo can't replicate at matched quality.
+The two-tier design separates shared-pool storage from per-agent shells. Historical size comparisons are configuration-specific; they do not establish matched-quality superiority over a single-codec design. The earlier 11.13× pool-size receipt is retained as size evidence, while its PPL-neutrality result is explicitly unadmitted. FibQuant and TurboQuant remain approximate codecs.
 
-## What is and is not unique to this system
+## System contributions and upstream attribution
 
-**Is unique to this system:**
+**Implemented and measured in this repository:**
 - The **two-tier pool architecture** (shared cold + per-agent hot) with
   the audit trail as the runtime contract
 - The **content-addressed, build-once pool primitive** with a
@@ -142,7 +138,7 @@ distribution) that turbo can't replicate at matched quality.
 - A historical standalone-shell receipt whose PPL output is explicitly
   unadmitted under the corrected held-out-continuation contract
 
-**Is not unique to this system:**
+**Upstream work and general techniques:**
 - The `fib_k4_n32` codec math itself — that belongs to Lee & Kim
   (arXiv 2605.11478, 2026). This repo is a clean-room Rust port.
 - The `turbo_8bit` hot tier — vendored from the existing
@@ -162,7 +158,7 @@ distribution) that turbo can't replicate at matched quality.
 > byte sizes remain observable; the PPL-neutrality language is not admitted.
 
 <p align="center">
-  <a href="docs/img/cross_validation.svg"><img src="docs/img/cross_validation.svg" alt="Historical single-pool receipt outputs; PPL values are not publication-admitted" width="100%"></a>
+  <a href="../docs/img/cross_validation.svg"><img src="../docs/img/cross_validation.svg" alt="Historical single-pool receipt outputs; PPL values are not publication-admitted" width="100%"></a>
 </p>
 
 | Configuration | Model | Corpus | n_tokens | Oracle PPL | Roundtrip PPL | ΔPPL | Pool size |
@@ -321,7 +317,7 @@ The codec math was always correct. The wire format was the
 bottleneck.
 
 <p align="center">
-  <a href="docs/img/wire_story.svg"><img src="docs/img/wire_story.svg" alt="Wire-format evolution: 472 B to 40 B per block" width="100%"></a>
+  <a href="../docs/img/wire_story.svg"><img src="../docs/img/wire_story.svg" alt="Wire-format evolution: 472 B to 40 B per block" width="100%"></a>
 </p>
 
 | Format | Per-block | vs JSON | Notes |
@@ -627,8 +623,7 @@ on GPT-2 small:
 The 0.99 / 0.946 numbers are **lossy** quality targets. The "5×"
 is on a model 17× smaller than SmolLM2-1.7B. The "34.1×" is on
 the same small model at substantially degraded attention output.
-Neither is comparable to the **11.13× lossless** number above
-without careful framing.
+Neither is directly comparable to the historical **11.13× pool-size ratio** above. That local receipt does not establish lossless reconstruction or admitted quality parity.
 
 The scalar "TurboQuant" baseline inside the FibQuant paper at
 b=2 on TinyLlama gives perplexity 56.717. FibQuant at the same

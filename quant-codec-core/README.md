@@ -1,6 +1,6 @@
 # quant-codec-core
 
-The smallest stable interface layer shared by the governed
+A shared experimental interface layer for the governed
 compression workspace (`proveKV`, `fib-quant`, `turbo-quant`,
 `scr-runtime-compression`, `quant-eval`).
 
@@ -75,10 +75,7 @@ fn main() {
 | `ModelFingerprint(String)` | Identifier for the model that produced the source data (e.g. `"qwen3-7b"`, `"nomic-embed-v1.5"`). |
 | `TokenizerFingerprint(String)` | Identifier for the tokenizer. |
 
-All five validate empty IDs as errors and provide `Display`, `Debug`,
-`Clone`, `Eq`, `Hash`, `Serialize`, `Deserialize`. Digest inputs are
-canonicalized via the workspace's `blake3` chain so different
-serialization orderings produce the same digest.
+String-backed identifiers reject empty values. Digest wrappers hash the exact caller-supplied bytes with BLAKE3; `from_canonical_bytes` assumes those bytes are already canonical and does not normalize JSON or serialization order. Serde implementations are feature-gated.
 
 ### Shape model
 
@@ -115,8 +112,8 @@ Validation rules:
 - `head_dim > 0`
 - `seq_len > 0`
 - Token spans are half-open `[start, end)` and non-empty
-- GQA/MQA: `key_heads != value_heads` represents grouped/multi-query
-  attention; `key_heads == value_heads` is multi-head attention (MHA)
+- `KvTensorShape` is the legacy key/value-head shape; key-head versus value-head equality does not by itself distinguish MHA, GQA, and MQA.
+- Use `KvCacheShapeV2` for explicit `num_q_heads`, `num_kv_heads`, batch size, and `KvAttentionKind`, with the provided validation constructors.
 
 ### Trait surface
 
@@ -199,18 +196,17 @@ shape.
 - Benchmark runners (lives in `quant-eval`)
 - Adaptive routing (lives in `quant-governor`)
 
-This is enforced by the `AGENTS.md` boundary contract in the
-parent repo.
+The concrete contracts are defined in this crate's source and exercised by its tests.
 
 ## Test coverage
 
-- 12 unit tests in `src/` covering:
+- Tests in `src/` and `tests/` cover:
   - Shape validation (positive and negative)
   - Token span validation
   - Digest stability across runs
   - Serde round-trip for all public types
   - Trait mock compile test
-- `cargo test` clean, `cargo clippy --all-targets -- -D warnings` clean.
+- Run `cargo test -p quant-codec-core` and `cargo clippy -p quant-codec-core --all-targets -- -D warnings` from the workspace root for the current revision.
 
 ## MSRV
 
@@ -223,7 +219,7 @@ Rust 1.75 (2021 edition). Stable features only.
 - `blake3` (for digest computation)
 
 Zero platform-specific code, zero FFI, zero async, zero ML
-dependencies. Builds in <1s.
+dependencies. Build time depends on the toolchain, dependency cache, and host.
 
 ## License
 
