@@ -4,10 +4,9 @@ Experimental vector compression sidecars for embedding search.
 
 `turbo-quant` implements three compression sidecars (`PolarQuant`,
 `TurboQuant`, and QJL sketches) and the surrounding infrastructure
-needed to use them in a real retrieval system: bit-packed wire
-formats, candidate generation, exact rerank, KV-cache shadow mode,
-and a complete benchmark harness that validates quality against a
-raw-vector reference.
+for bit-packed wire formats, approximate candidate generation,
+KV-cache shadow mode, and codec evaluation. Exact reranking uses
+caller-owned raw vectors; the candidate index does not own that step.
 
 **Status:** experimental / research substrate. See the
 "Scope and limits" section below for what this crate is and is not
@@ -37,41 +36,69 @@ safe to claim.
   codec kind, dim, bits, projections, rotation, and a
   `profile_digest` (FNV-1a 64-bit) for receipt comparison.
   Source: `src/profile.rs`.
-- **Benchmark harness** — `tools/semantic_memory_harness/`
-  validates the sidecar against `semantic_memory::search::cosine_similarity`
-  as the raw-vector reference, and emits a
-  `SemanticMemoryHarnessSummaryV1` receipt.
+- **Codec benchmark example** — `examples/bench_embeddings.rs`
+  evaluates a generated corpus and emits a `BenchmarkReceiptV1`.
+  The historical external semantic-memory harness discussed below
+  is not the same executable.
 
 ## Quick Start
 
+`TurboSidecarIndex` owns compressed candidate generation. Keep the raw
+vectors separately and rerank the returned candidates in the caller.
+Candidate retrieval remains approximate, so reranking cannot recover a
+raw top result that was absent from the candidate set.
+
 ```rust
-use turbo_quant::{CodecProfile, TurboSidecarCode, TurboSidecarIndex};
-use nalgebra::DVector;
+use turbo_quant::{SearchOptions, TurboQuantizer, TurboSidecarIndex};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Build a codec profile.
-    let profile = CodecProfile::turbo_quant_8bit(32)
-        .with_projections(16)
-        .with_seed(42);
+fn main() -> turbo_quant::Result<()> {
+    let dim = 32;
+    let corpus = vec![vec![0.1_f32; dim], vec![0.2_f32; dim]];
+    let query = vec![0.15_f32; dim];
+    let quantizer = TurboQuantizer::new(dim, 8, 16, 42)?;
+    let mut index = TurboSidecarIndex::new(quantizer);
 
-    // Encode a corpus.
-    let corpus: Vec<DVector<f32>> = /* your vectors */;
-    let code = TurboSidecarCode::encode(&profile, &corpus)?;
-    let index = TurboSidecarIndex::build(&profile, code)?;
+    for (id, vector) in corpus.iter().enumerate() {
+        index.add(id, vector, None)?;
+    }
 
-    // Search — get candidates in compressed space, then rerank on raw.
-    let query = DVector::from_vec(/* query vector */);
-    let candidates = index.candidates(&profile, &query, 40, 10)?;  // oversample × top_k
-    let reranked = index.exact_rerank(&candidates, &corpus, &query, 10)?;
+    let (candidates, receipt) = index.search(
+        &query,
+        SearchOptions { top_k: 1, oversample: 4 },
+    )?;
 
+    // Rerank candidates against caller-owned raw vectors.
+    let mut reranked: Vec<(usize, f32)> = candidates
+        .iter()
+        .map(|candidate| {
+            let score = corpus[candidate.id]
+                .iter()
+                .zip(&query)
+                .map(|(x, y)| x * y)
+                .sum();
+            (candidate.id, score)
+        })
+        .collect();
+    reranked.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    reranked.truncate(1);
+    println!("reranked={reranked:?}, receipt={receipt:?}");
     Ok(())
 }
 ```
 
-The `examples/` directory has runnable versions of this and three
-other flows: `bench_embeddings.rs`, `kv_shadow.rs`,
-`profile_receipt.rs`, and `compat_0_1_smoke.rs` (the P26
-release-gate smoke test).
+The crate exports `CodecProfileV1`, not a `CodecProfile` builder.
+`TurboSidecarIndex::new` takes a quantizer; `add` encodes each vector;
+`search` returns candidates and a `SearchReceiptV1` with
+`approximate_only = true` and `exact_rerank_required = true`.
+There is no built-in `TurboSidecarCode` type or `exact_rerank` method.
+
+The checked-in examples include `bench_embeddings.rs`,
+`kv_shadow.rs`, `profile_receipt.rs`, and `compat_0_1_smoke.rs`.
+From the workspace root, run the compatibility example with:
+
+```sh
+cargo run --release -p turbo-quant --example compat_0_1_smoke
+```
 
 ## Benchmarks — measured
 
@@ -148,7 +175,9 @@ Both P31 and P32 receipts classify as `green`. The full receipts
 are at
 `semantic-memory/docs/codex-runs/archive/.../turboquant-*-benchmark-summary.json`.
 
-To reproduce: `cd turbo-quant && cargo run --release --example bench_embeddings`.
+From the workspace root, `cargo run --release -p turbo-quant --example bench_embeddings`
+runs the current synthetic codec benchmark. It does not reproduce the
+external P31/P32 semantic-memory harness reports above.
 
 ## Scope and limits
 
@@ -173,8 +202,9 @@ What's allowed:
 - "workload-specific benchmark receipts required"
 - "semantic-memory reference harness validates retrieval drift locally"
 
-The full release-claim law is at
-`turbo-quant/AGENTS.md` (P26 patch).
+The historical P26 release-claim law referenced `turbo-quant/AGENTS.md`.
+That file is not present in this repository snapshot; the scope limits above
+remain explicit documentation boundaries, not evidence of a current release gate.
 
 ## What's verified
 

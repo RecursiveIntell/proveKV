@@ -511,7 +511,23 @@ the batch decode path. The two are independent.
     └── ppl_multi_agent_b4_provenance_v2/ # current N=8 size + aggregate PPL receipts
 ```
 
-## Methodology (locked; do not deviate)
+## Historical single-pool methodology (PPL outputs unadmitted)
+
+The steps below preserve the historical single-pool procedure.
+They pre-populate a reconstructed cache and then forward the same
+full input, so they are not a valid cache-aligned held-out continuation
+quality check. Do not use this procedure to substantiate PPL neutrality.
+
+The current N=8 aggregate check is described in
+[N=8 size result and shared-prefix continuation check](#4-n8-size-result-and-shared-prefix-continuation-check),
+with the receipt-bound implementation in
+[`ppl_validate_multi_agent.py`](scripts/ppl_validate_multi_agent.py)
+and claim admission in [`CLAIMS.json`](../CLAIMS.json).
+It loads reconstructed shared-prefix positions [0, 799), sends
+tokens [799, 1023), and scores exact targets [800, 1024).
+It does not consume reconstructed shell K/V and does not establish
+independent-prompt per-agent quality.
+
 
 The full methodology is documented inline in
 [`proveKV/scripts/ppl_validate.py`](scripts/ppl_validate.py). The
@@ -543,7 +559,7 @@ abbreviated version:
 1. Write `report.md` with the headline + per-layer accounting
 2. Write `state.json` with all phase0/phase1 fields
 
-**The reference run** (committed at
+**The historical reference run** (committed at
 [`results/bench/ppl/smollm2-1.7b/wikitext-2/`](../results/bench/ppl/smollm2-1.7b/wikitext-2/)):
 
 | Metric | Value |

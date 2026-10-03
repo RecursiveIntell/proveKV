@@ -1,8 +1,9 @@
 # quant-codec-core
 
-A shared experimental interface layer for the governed
-compression workspace (`proveKV`, `fib-quant`, `turbo-quant`,
-`scr-runtime-compression`, `quant-eval`).
+An experimental typed interface layer packaged in the proveKV
+workspace alongside `proveKV`, `fib-quant`, `turbo-quant`, and
+`gpu-backend`. Co-location does not mean that every workspace
+member implements these traits.
 
 `quant-codec-core` is **boring, deterministic, dependency-light, and
 free of runtime authority**. It defines:
@@ -15,7 +16,8 @@ free of runtime authority**. It defines:
   (`CodecProfile`, `VectorCodec`, `KvCacheCodec`).
 - An `EvalReport` type for codec quality comparison.
 
-This crate is the **type contract** for the codec workspace. It does
+This crate provides a **type contract** for consumers that adopt its
+interfaces. It does
 **not** own the codec math, the GPU dispatch, the runtime, the
 manifests, the receipts, or the policy. It owns types and traits,
 nothing more.
@@ -29,9 +31,10 @@ each of the codecs in the workspace (`fib-quant`, `turbo-quant`,
 duplicated IDs, duplicate digests with subtly different canonical
 forms, and shape types that don't compose.
 
-`quant-codec-core` is the **one place** in the workspace where the
-ID is a `CodecId` and the digest is a `CodecProfileDigest` and
-they mean the same thing everywhere.
+Consumers that use these APIs share the `CodecId` and
+`CodecProfileDigest` types. Concrete codecs can have independent
+profile and shape contracts; adopting these traits requires an explicit
+implementation or adapter.
 
 ## Quick Start
 
@@ -55,7 +58,8 @@ fn main() {
 
     // Validate invariants.
     assert!(shape.layers > 0);
-    assert_eq!(shape.key_heads, shape.value_heads, "MHA");
+    // Key/value-head equality alone does not distinguish MHA, GQA, or MQA.
+    // Use KvCacheShapeV2 when explicit query/KV-head geometry is required.
 
     // Build a codec ID.
     let id = CodecId::new("fib-quant").expect("non-empty");
@@ -230,16 +234,16 @@ MIT OR Apache-2.0 (dual-licensed). See `LICENSE-MIT` and
 
 See `CHANGELOG.md` for the release history.
 
-## Where it's used
+## Workspace integration boundary
 
-`quant-codec-core` is a foundational dependency of:
+The proveKV workspace includes this crate as a member, but the current
+`proveKV`, `fib-quant`, and `turbo-quant` package manifests do not
+declare a dependency on it. Their presence in the same workspace is
+not evidence that their codec implementations satisfy these traits.
+In particular, fib-quant's feature-gated KV module uses its own
+`KvTensorShapeV1` and CPU reference functions.
 
-- `proveKV` (the shared KV-cache pool primitive)
-- `fib-quant` (the radial-angular vector codec)
-- `turbo-quant` (the experimental vector compression sidecar)
-- `scr-runtime-compression` (the runtime integration adapter)
-- `quant-eval` (the benchmark suite)
-
-Any system that needs a typed codec contract — the
-shape of the data, the digest of the profile, the trait the
-codec implements — can adopt `quant-codec-core` directly.
+Systems that want this shared contract can depend on
+`quant-codec-core` and implement or adapt the traits explicitly.
+The contract definitions and tests in this crate are the authority
+for that interface; they do not prove an external integration.

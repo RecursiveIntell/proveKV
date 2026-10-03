@@ -1,76 +1,91 @@
 # gpu-backend
 
-Shared CUDA GPU backend for `fib-quant` and `turbo-quant` vector
-quantization.
+CPU/SIMD primitives and a feature-gated CUDA codebook lookup backend
+for vector quantization.
 
-`gpu-backend` provides the GPU-side primitives that the codec
-crates dispatch to: a **Hadamard rotation kernel** (in-place
-fast Walsh-Hadamard transform) and a **codebook lookup kernel**
-(nearest-codeword search for block-quantized vectors). Both
-kernels are **parity-verified** — they produce byte-identical
-results to the CPU reference on random inputs, which is the
-audit handle that GPU dispatch doesn't silently change the
-result.
+**Status:** alpha. The public backend currently activates one CUDA
+operation: codebook lookup for `k = 4` and exactly 32 codewords.
+It compiles the checked-in `kernels/codebook_lookup.cu` through NVRTC
+at runtime. Hadamard, Lloyd-Max encode/decode, and bitpacking public
+operations currently select their CPU reference paths.
 
-**Status:** alpha. The kernels are correct. The dispatch path
-through `cudarc` pays per-call H2D/D2H overhead that, for the
-workloads in the current benchmark suite, is more expensive
-than the kernel runtime. The kernels are exposed as
-**infrastructure** that a future device-side pipeline can
-use to keep rotated data resident on device between calls.
+CUDA readiness is reported by `GpuContext::availability()`.
+`Ready` means the driver and NVRTC loaded, the canonical source
+compiled, its module loaded, and the required kernel symbol resolved.
+It is a readiness signal, not a hardware-parity or performance result.
 
 ## What's in the box
 
-- **`simd_nearest_codeword`** — AVX2+FMA SIMD implementation
-  of the k=4, N=32 codebook lookup loop. For 4-element blocks,
-  two codewords fit in one `__m256` and are evaluated with
-  FMA + horizontal add. Runtime feature detection via
-  `is_x86_feature_detected!` — falls back to a scalar f32 loop
-  on platforms without AVX2+FMA.
-- **Hadamard kernel** — In-place fast Walsh-Hadamard transform
-  on d-dim vectors. CPU fallback when `gpu` feature is not
-  enabled; CUDA kernel when it is.
-- **Codebook lookup kernel** — Nearest-codeword search for
-  block-quantized vectors. CUDA kernel when `gpu` feature is
-  enabled; CPU fallback otherwise.
-- **Parity tests** — Random inputs (16 seeds, 32 dims × 32
-  codewords, 4 blocks) verified byte-identical against the
-  CPU reference. The audit handle that the kernel is correct.
+- **`nearest_codeword_f32`** — returns a nearest-codeword index.
+  On x86/x86_64, the `k = 4` path uses AVX2+FMA when those
+  features are available at runtime; other cases use scalar f32.
+- **`codebook_lookup_batch`** — returns row-major `u32` indices.
+  CUDA is eligible only for finite inputs and a finite codebook,
+  `k = 4`, exactly 32 codewords, `n >= 16`, `d >= 64`,
+  supported index ranges, and a ready CUDA context. Other valid
+  shapes or unavailable CUDA use the CPU reference.
+- **CPU reference operations** — `hadamard_batch`,
+  `lloyd_max_batch`, `lloyd_max_decode_batch`, and `bitpack`.
+- **Readiness and conditional parity tests** — source includes
+  disabled-feature, unavailable-runtime, input-validation, and
+  CUDA/CPU index-parity checks. The CUDA parity test skips when
+  CUDA is unavailable; a passing CPU-only test run is not proof
+  that CUDA executed.
 
 ## Quick Start
 
 ```rust
-use gpu_backend::simd_nearest_codeword;
+use gpu_backend::nearest_codeword_f32;
 
 fn main() {
-    // AVX2+FMA SIMD path — no GPU needed, just x86 with AVX2+FMA.
-    let codebook: Vec<f32> = /* 32 codewords × 4 dims */;
-    let input: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
-    let (index, score) = simd_nearest_codeword(&input, &codebook, 4, 32);
-    println!("Nearest codeword: index={}, score={}", index, score);
+    // One 4-element sample and two 4-element codewords.
+    let codebook = vec![0.0_f32, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0];
+    let input = [1.0_f32, 2.0, 3.0, 4.0];
+    let index = nearest_codeword_f32(&input, &codebook, 4);
+    println!("Nearest codeword: index={index}");
 }
 ```
 
-Run it: `cargo run --release --example simd_nearest_demo`.
+This CPU/SIMD API needs no CUDA feature. It returns an index, not
+an `(index, score)` tuple.
+
+From the workspace root, the following commands exercise the package
+tests. The CUDA-feature command still requires inspection of readiness
+and test output to distinguish an executed CUDA test from a skip.
+
+```sh
+cargo test -p gpu-backend
+cargo test -p gpu-backend --features gpu -- --nocapture
+```
 
 ## Features
 
 | Feature | Default | What it enables |
 |---|---|---|
-| `gpu` | off | CUDA dispatch via `cudarc` |
-| `precompiled-ptx` | off | Loads the precompiled `combined.ptx` at runtime; required for real GPU dispatch |
-| `default = []` | yes | Pure CPU, no CUDA dependency compiled in |
+| `gpu` | off | CUDA driver/NVRTC dynamic loading and the narrow codebook-lookup dispatch |
+| `precompiled-ptx` | off | Retained feature declaration; not required by the active NVRTC-compiled codebook-lookup path |
+| `default = []` | yes | CPU/SIMD primitives without compiling the CUDA dependency |
 
-Both `gpu` and `precompiled-ptx` are required for real GPU
-dispatch. Without `--features precompiled-ptx`, all GPU
-operations fall back to CPU.
+The active CUDA lookup requires `gpu`, an available CUDA driver,
+NVRTC, and the documented shape contract. It does not load
+`combined.ptx` for that path. Use the typed availability result
+rather than assuming that compiling a feature proves GPU execution.
+
+## Historical benchmark reports
+
+The following numbers are retained as previously reported measurements.
+They do not certify the current source revision or its dispatch path.
+In particular, the historical Hadamard-GPU rows do not describe the
+current public `hadamard_batch` operation, which now runs on CPU.
+Re-establish source-bound hardware receipts before using these rows
+as current performance or parity claims.
 
 ## Benchmarks — measured
 
 The `gpu-backend` kernels were measured on **msi i7-6700HQ + GTX 1070**
 (matched to the fib-quant and turbo-quant bench environments).
 
-### `simd_nearest_codeword` (AVX2+FMA CPU path)
+### `nearest_codeword_f32` (historical AVX2+FMA CPU report)
 
 For k=4, N=32 codebook lookups:
 
@@ -101,9 +116,10 @@ practical throughput is ~4GB/s, so the transfers alone are
 ~225μs. The kernel runtime is microseconds. **Transfer overhead
 dominates.**
 
-**The kernel is correct** (parity test passes for n=32, d=128,
-k=4, N=32 random inputs on msi GTX 1070). **The dispatch is the
-issue, not the kernel.**
+The historical report described parity for n=32, d=128, k=4,
+N=32 on msi GTX 1070. Current CUDA parity must be established
+with evidence that the active kernel actually executed; the
+conditional test alone can skip on unavailable hardware.
 
 ### Hadamard kernel (CUDA)
 
@@ -112,10 +128,8 @@ issue, not the kernel.**
 | nomic 768 n=80 | 4552ms wall | 4430ms wall (-2.7%) |
 | qwen3 2560 n=80 | 13763ms wall | 13419ms wall (-2.5%) |
 
-**Hadamard-only GPU win: 2.5-2.7%** on the larger corpora.
-The win is real but small — the dominant cost in
-fib-quant's encode_batch is the codebook lookup, not the
-Hadamard.
+These historical Hadamard timings are not a current CUDA capability
+claim. The public Hadamard operation now selects the CPU reference.
 
 ## What would actually win
 
@@ -139,14 +153,14 @@ reference.
 
 ## Test coverage
 
-- **16 parity tests** in `tests/`:
-  - SIMD vs scalar f32, 16 random seeds, byte-identical.
-  - Hadamard vs reference, 8 random seeds, byte-identical.
-  - Codebook lookup vs reference, 8 random seeds, byte-identical
-    (only on machines with `gpu` feature + CUDA runtime).
-- **3 examples**: `simd_nearest_demo`, `codebook_lookup_microbench`,
-  `hadamard_microbench`.
-- `cargo test` clean, `cargo clippy --all-targets -- -D warnings` clean.
+The source includes CUDA readiness diagnostics, invalid-input checks,
+and a conditional codebook index-parity test. That parity fixture
+uses n=32, d=128, k=4, and 32 codewords, and skips when CUDA
+is unavailable.
+
+Run the commands in Quick Start against the revision you intend to use.
+A passing run without an executed CUDA fixture establishes no hardware
+parity result, and this README makes no current test-count or timing claim.
 
 ## MSRV
 
@@ -177,14 +191,15 @@ See `CHANGELOG.md` for the release history.
 
 `gpu-backend` is the GPU-side primitive for:
 
-- `fib-quant` — dispatches Hadamard rotation to GPU when
-  `--features gpu` is enabled, and codebook lookup when
-  `--features gpu_codebook_lookup` is enabled.
+- `fib-quant` — its `gpu` feature enables backend readiness;
+  `gpu_codebook_lookup` additionally enables its optional lookup
+  call. The backend's public Hadamard call currently stays on CPU.
 - `turbo-quant` — historically had a `gpu` feature that was
   removed in v0.2.0 because the dispatch overhead negated
   the kernel speedup; the kernels live here for future use.
-- `proveKV` — gates the GPU codebook lookup path on this
-  crate's `gpu` feature.
+- `proveKV` — reaches backend primitives through its fib codec
+  dependency. Its own `gpu` feature is an empty cfg-probe feature;
+  it does not enable `gpu-backend/gpu`.
 
-Any system that needs a parity-verified GPU Hadamard or
-codebook lookup can adopt `gpu-backend` directly.
+Systems can adopt the CPU/SIMD primitives directly or evaluate the
+narrow CUDA lookup path with workload-specific hardware receipts.
