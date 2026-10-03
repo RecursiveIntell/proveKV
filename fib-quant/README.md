@@ -1,5 +1,11 @@
 # fib-quant
 
+> **Historical claim boundary:** the ~50× compression and 100% recall
+> statements retained below are historical unqualified wording, not
+> current-revision certification. The current profile records an explicit
+> index bit rate, and the wire stores a norm payload plus packed indices.
+> Byte counts and quality require a matching profile and source-bound receipt.
+
 The cold-tier vector codec. ~50× compression. 100% recall on
 the canonical benchmark corpus.
 
@@ -35,58 +41,68 @@ many agents:
 
 ## What's in the box
 
-- **Codecs** (`src/codec.rs`, 842 lines) — `FibQuantizer`
-  with `encode`, `decode`, `encode_batch`, `decode_batch`.
-  The `encode_batch` is the Rayon-parallel path that wins
-  the proveKV pool build.
-- **Codebook** (`src/codebook.rs`, 204 lines) —
-  `LloydRefinement` of a Fibonacci-sampled seed codebook.
-  Parity-verified against the reference.
-- **Rotation** (`src/rotation.rs`, 189 lines) — fast
-  Walsh-Hadamard rotation, with a CPU fallback and an
-  optional CUDA dispatch via `gpu-backend`.
-- **Spherical beta** (`src/spherical_beta.rs`, 139 lines) —
+- **Vector codec** (`src/codec.rs`) — `FibQuantizer` provides
+  `encode`, `decode`, `encode_with_receipt`, `encode_batch`,
+  and `decode_batch`. Batch encoding accepts borrowed vector slices
+  and returns encoded codes.
+- **Codebook** (`src/codebook.rs`, `src/lloyd.rs`) —
+  Fibonacci-style direction seeding and Lloyd refinement.
+- **Rotation** (`src/rotation.rs`) — a seeded stored orthogonal
+  rotation. The feature-gated batch path calls `gpu-backend`;
+  its public Hadamard operation currently selects the CPU reference.
+- **Spherical beta** (`src/spherical_beta.rs`) —
   spherical-Beta direction samplers for codebook seeding.
-- **KV-cache codec** (`src/kv/`, ~2,500 lines) — a separate
-  `KvCacheCodec` impl that operates on `KvTensorShape` rather
-  than raw `Vec<f32>`. Includes attention-quality metrics,
-  shape contracts, and policy-role-aware dispatch.
-- **Profiles** (`src/profile.rs`, 408 lines) — typed
-  `FibProfile` with `paper_default` (k=4, N=32), `compact`
-  (k=4, N=32, binary-packed), and `kv` (KV-cache-tuned).
+- **KV-cache helpers** (`src/kv/`, `kv` feature, default-off) —
+  experimental CPU reference encode/decode functions, explicit
+  `KvTensorShapeV1` contracts, policy decisions, and attention-quality
+  reports. This module uses its own typed KV contracts; it is not an
+  implementation of `quant_codec_core::KvCacheCodec`.
+- **Profiles** (`src/profile.rs`) — `FibQuantProfileV1`, constructed
+  with `paper_default(ambient_dim, block_dim, codebook_size, seed)`.
+  Profile construction and quantizer construction are fallible.
 - **Receipts** (`src/receipt.rs`, `src/kv/receipt.rs`) —
-  typed `FibEncodeReceipt` and `KvEncodeReceipt` capturing
-  every parameter of the encode pipeline for audit.
+  `FibQuantCompressionReceiptV1`, `KvCompressionReceiptV1`,
+  `KvDecodeReceiptV1`, and `KvEvalReceiptV1`.
 
 ## Quick Start
 
+The following uses the checked-in `examples/encode_decode.rs` API.
+It is a small encode/decode example, not a quality benchmark.
+
 ```rust
-use fib_quant::{FibQuantizer, FibProfile};
-use quant_codec_core::CodecProfile;
+use fib_quant::{FibQuantProfileV1, FibQuantizer};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Build a quantizer with the default paper profile.
-    let profile = FibProfile::paper_default(32);  // 32-dim vectors
-    let quantizer = FibQuantizer::new(profile.clone());
+fn main() -> fib_quant::Result<()> {
+    let mut profile = FibQuantProfileV1::paper_default(8, 2, 8, 42)?;
+    profile.training_samples = 128;
+    profile.lloyd_restarts = 1;
+    profile.lloyd_iterations = 2;
 
-    // Encode a single vector.
-    let vector: Vec<f32> = (0..32).map(|i| i as f32 * 0.01).collect();
-    let block = quantizer.encode(&vector)?;
-    let reconstructed = quantizer.decode(&block)?;
+    let quantizer = FibQuantizer::new(profile)?;
+    let input = vec![1.0, 0.5, -0.25, 0.125, -1.5, 0.75, 0.25, -0.5];
+    let (code, receipt) = quantizer.encode_with_receipt(&input)?;
+    let decoded = quantizer.decode(&code)?;
 
-    // The cosine similarity should be high.
-    let cos = quantizer.cosine_similarity(&vector, &reconstructed);
-    assert!(cos > 0.85);
-
-    // Or encode a batch in parallel.
-    let corpus: Vec<Vec<f32>> = /* ... */;
-    let (blocks, receipt) = quantizer.encode_batch(&corpus)?;
-    println!("Batch receipt: {:?}", receipt);
+    println!("encoded_digest={}", receipt.encoded_digest);
+    println!("source_vector_digest={}", receipt.source_vector_digest);
+    println!("decoded_len={}", decoded.len());
     Ok(())
 }
 ```
 
-Run it: `cargo run --release --example encode_decode`.
+From the workspace root, run:
+
+```sh
+cargo run --release -p fib-quant --example encode_decode
+```
+
+For a batch, pass `&[&[f32]]` to `encode_batch`; it returns
+`Vec<FibCodeV1>`. The `parallel` feature is enabled by default.
+The `gpu` feature enables CUDA readiness through `gpu-backend`;
+`gpu_codebook_lookup` additionally enables the optional codebook
+dispatch in this crate. Actual CUDA lookup still depends on the
+backend's readiness and narrow shape contract. See
+[`gpu-backend`](../gpu-backend/README.md) for the current dispatch boundary.
 
 ## Benchmarks — measured
 
@@ -134,7 +150,14 @@ Rayon):
 
 Numbers from `proveKV/benchmarks/DO_ALL_PERF_PASS_2026-06-01.md`.
 
-### GPU path — measured
+### Historical GPU-path report
+
+The table below is retained as a previously reported measurement.
+It does not certify the current dispatch path: the public backend
+Hadamard operation now selects the CPU reference, and only the
+narrow codebook-lookup contract can dispatch to CUDA. Re-establish
+source-bound hardware evidence before making a current GPU speedup claim.
+
 
 | Shape | n | CPU | Hadamard-GPU | Full-GPU | Best |
 |---|---|---|---|---|---|
@@ -143,12 +166,10 @@ Numbers from `proveKV/benchmarks/DO_ALL_PERF_PASS_2026-06-01.md`.
 | d=768 | 80 | 2143ms | **2103ms (-2%)** | 2133ms | Hadamard |
 | d=2560 | 4 | 1571ms | 1564ms (0%) | 1554ms (0%) | tie |
 
-**Honest takeaway:** fib-quant's `encode_batch` is 2-7%
-faster on a real GPU (msi i7-6700HQ + GTX 1070) with the
-Hadamard path engaged. The codebook_lookup kernel exists and
-is parity-verified, but the per-call H2D/D2H overhead
-currently negates its win. A device-side pipeline is the
-next step.
+Those historical rows are not a current Hadamard-GPU capability claim.
+The current public Hadamard call runs on CPU; see
+[`gpu-backend`](../gpu-backend/README.md) for the active CUDA lookup
+contract and typed readiness checks.
 
 ### Test coverage
 
@@ -182,7 +203,7 @@ crate level.
 - `serde_json`.
 - `blake3`.
 - `rand` + `rand_chacha` (dev).
-- `gpu-backend` (optional) — for the GPU Hadamard dispatch.
+- `gpu-backend` — CPU/SIMD primitives, with optional CUDA codebook lookup.
 - `rayon` (optional, behind the `parallel` feature) — for
   parallel batch encoding.
 - `proptest` (dev).
