@@ -1,13 +1,14 @@
 # fib-quant
 
-> **Historical claim boundary:** the ~50× compression and 100% recall
-> statements retained below are historical unqualified wording, not
+> **Historical claim boundary:** the size and retrieval figures retained
+> below are profile- and fixture-specific historical reports, not
 > current-revision certification. The current profile records an explicit
 > index bit rate, and the wire stores a norm payload plus packed indices.
 > Byte counts and quality require a matching profile and source-bound receipt.
 
-The cold-tier vector codec. ~50× compression. 100% recall on
-the canonical benchmark corpus.
+An experimental cold-tier vector codec. The size and retrieval numbers below
+are historical, profile- and fixture-specific reports, not guarantees for the
+current source or a new workload.
 
 > Implementation of FibQuant-style radial-angular vector
 > quantization for KV-cache compression, based on the public
@@ -17,10 +18,10 @@ the canonical benchmark corpus.
 
 `fib-quant` decomposes a vector into spherical blocks,
 quantizes each block against a Fibonacci-optimized codebook,
-and stores only the codebook indices. The result: a 768-dim
-f32 vector (3,072 bytes) becomes ~860 bytes in JSON, or
-~64 bytes with binary packing. And it still finds the right
-document at rank 1 in 100% of the canonical test queries.
+and stores only the codebook indices. For one previously reported 768-dim profile, a 3,072-byte f32 vector
+became about 860 bytes in JSON or 64 bytes in a compact binary form.
+The reported rank-1 result came from eight fixture queries; neither
+size nor retrieval quality is certified for a new profile or corpus.
 
 This is the **cold-tier codec** in the proveKV pool. It
 handles shared context that's large, stable, and accessed by
@@ -31,7 +32,7 @@ many agents:
 │    SHARED POOL — fib-quant       │  ← you are here
 │    System prompts, few-shot      │
 │    examples, shared docs         │
-│    50× compression, cos 0.863    │
+│    historical profile report      │
 └──────────┬──────────┬────────────┘
            │          │
       ┌────▼───┐ ┌───▼────┐
@@ -104,7 +105,13 @@ dispatch in this crate. Actual CUDA lookup still depends on the
 backend's readiness and narrow shape contract. See
 [`gpu-backend`](../gpu-backend/README.md) for the current dispatch boundary.
 
-## Benchmarks — measured
+## Historical benchmark reports
+
+The figures below were previously reported for specific profiles and fixtures.
+They have not been reproduced for this HEAD in this README review. The cited
+June performance source file, `proveKV/benchmarks/DO_ALL_PERF_PASS_2026-06-01.md`,
+is not present in the current repository tree, so those throughput rows need
+an independently accessible receipt before use as current performance claims.
 
 ### Compression ratios (768-dim nomic-embed-v1.5)
 
@@ -116,11 +123,10 @@ backend's readiness and narrow shape contract. See
 | fib-quant KV-cache JSON | 1,200 | 2.6× |
 | fib-quant KV-cache binary | ~80 | ~38× |
 
-The "theoretical 50×" is the binary-packed compact form.
-The "JSON 3.6×" is what you get with the default wire
-format — the JSON envelope is 12× bigger than the actual
-codebook indices. **If you're optimizing for storage, use
-the binary wire format.**
+The historical ~48–50× figure describes the binary-packed form in the
+reported profile, while the reported JSON representation was about 3.6×
+smaller than raw f32. These are profile- and format-dependent byte ratios;
+measure the complete representation selected by your application.
 
 ### Retrieval quality (P26 measurement, semantic-memory harness)
 
@@ -190,7 +196,9 @@ contract and typed readiness checks.
   `encode_decode`, `test_compact_decode`.
 - **4 benches** (criterion): `codebook_build`, `encode_decode`,
   `kv_attention_ref`, `kv_encode_decode`.
-- `cargo test` clean, `cargo clippy --all-targets -- -D warnings` clean.
+- To check the current source, run `cargo test -p fib-quant` and
+  `cargo clippy -p fib-quant --all-targets -- -D warnings` from the
+  workspace root. These checks were not executed in this README review.
 
 ## MSRV
 
@@ -245,6 +253,6 @@ test suite are original to this implementation.
 - `scr-runtime-compression` — the `fib` feature is the
   fib-quant adapter for the runtime.
 
-Any system that needs a **high-ratio, medium-fidelity** vector
-codec — search-only recall, cold tier, ~50× storage savings
-— can adopt `fib-quant` directly.
+A consumer evaluating this experimental vector codec should measure
+storage and retrieval quality on its own profile and workload before
+adopting it; the historical ~50× figure is not a general saving.
