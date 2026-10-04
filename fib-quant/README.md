@@ -1,7 +1,7 @@
 # fib-quant
 
-> **Historical claim boundary:** the ~50× compression and 100% recall
-> statements retained below are historical unqualified wording, not
+> **Historical claim boundary:** the size and retrieval figures retained
+> below are profile- and fixture-specific historical reports, not
 > current-revision certification. The current profile records an explicit
 > index bit rate, and the wire stores a norm payload plus packed indices.
 > Byte counts and quality require a matching profile and source-bound receipt.
