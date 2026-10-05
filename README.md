@@ -381,9 +381,11 @@ single scaling curve.
 - A reproduction of the FibQuant paper's headline numbers. Historical local
   PPL outputs use an unadmitted method and are not a replacement.
 - A head-to-head with Google's TurboQuant at matched bit rate.
-  `fib_k4_n32` operates at b=1.25 (5 bits / 4 coords) and is
-  lossless; TurboQuant at b=8 is lossy. They are not directly
-  comparable at matched bit rate
+  `fib_k4_n32` is an approximate codebook quantizer, not bit-exact
+  reconstruction of the original K/V tensors. Its 5 code-index bits
+  per 4 coordinates (1.25 bits/coordinate) exclude norm and wire
+  overhead. Compare complete stored bytes and measured quality on
+  the same workload before drawing competitive conclusions
 - A claim about Llama-3, Qwen-7B+, Phi, Mistral, GPT-2, Pythia,
   Falcon, or any model other than the three validated:
   SmolLM2-1.7B-Instruct, TinyLlama-1.1B-Chat-v1.0,
